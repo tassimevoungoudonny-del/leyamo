@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dashboard - Leyamo</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Dashboard</span></h2></div><button onclick="deconnexion()">Déconnexion</button></header>
+<div class="dashboard">
+    <div class="card-dashboard"><h3 id="nom-vendeur"></h3><p id="nom-boutique"></p></div>
+    <div class="stats"><div class="stat-box"><h2 id="nb-produits">0</h2><p>Produits</p></div><div class="stat-box"><h2 id="nb-vues">0</h2><p>Vues</p></div><div class="stat-box"><h2 id="nb-clics">0</h2><p>Clics WhatsApp</p></div></div>
+    <a href="ajouter-produit.html" class="btn">+ Ajouter un produit</a>
+    <h2>Mes Produits</h2>
+    <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <button class="tab-produit active" data-tab="valides" style="padding:8px 20px;border:none;border-radius:50px;background:#0f766e;color:white;cursor:pointer;">✅ Validés</button>
+        <button class="tab-produit" data-tab="refuses" style="padding:8px 20px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">❌ Refusés</button>
+    </div>
+    <div id="mes-produits"></div>
+    <div id="mes-produits-refuses" style="display:none;"></div>
+
+    <!-- Suppression compte -->
+    <div style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
+        <button onclick="supprimerCompte()" style="background: #dc2626; color: white; border: none; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: 600;">
+            🗑️ Supprimer mon compte
+        </button>
+        <p style="color: #64748b; font-size: 13px; margin-top: 8px;">
+            Cette action est irréversible. Tous vos produits seront supprimés.
+        </p>
+    </div>
+</div>
+<script src="dashboard.js"></script><script src="notifications.js"></script>
+</body>
+</html>

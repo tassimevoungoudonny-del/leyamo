@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Modifier Produit - Leyamo</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="login-container">
+    <div class="login-box">
+        <h2>Modifier le <span>produit</span></h2>
+        <label for="nom_produit">Nom</label><input type="text" id="nom_produit">
+        <label for="description_produit">Description</label><textarea id="description_produit"></textarea>
+        <label for="prix">Prix (FCFA)</label><input type="number" id="prix">
+        <label for="categorie">Catégorie</label>
+        <select id="categorie"><option value="Vêtements">Vêtements</option><option value="Chaussures">Chaussures</option><option value="Maillot">Maillot</option><option value="Électronique">Électronique</option><option value="Accessoires">Accessoires</option><option value="Maison">Maison</option><option value="Autre">Autre</option></select>
+        <label for="image_url">URL image principale</label><input type="text" id="image_url" placeholder="https://exemple.com/photo.jpg">
+        <button onclick="modifierProduit()">Enregistrer</button>
+        <p id="message"></p>
+    </div>
+</div>
+<script src="modifier-produit.js"></script><script src="notifications.js"></script>
+</body>
+</html>

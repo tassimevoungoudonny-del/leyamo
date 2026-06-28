@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Boutique - Leyamo</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Store</span></h2></div><nav><a href="index.html">Accueil</a><a href="connexion.html">Connexion</a><a href="inscription.html">Inscription</a></nav></header>
+<div style="padding:30px;max-width:1200px;margin:0 auto;">
+    <div id="info-boutique" style="background:white;padding:24px;border-radius:16px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+        <h2 id="nom-boutique">Boutique</h2><p id="localisation-boutique">📍 Localisation</p><p>📱 WhatsApp: <span id="num-whatsapp"></span></p>
+    </div>
+    <h2>Produits</h2><div id="produits-boutique" class="grille-produits"></div>
+</div>
+<script src="notifications.js"></script>
+<script>
+const API = "http://127.0.0.1:5000";
+const id = new URLSearchParams(window.location.search).get("id");
+chargerBoutique();
+
+async function chargerBoutique() {
+    if (!id) { document.getElementById("info-boutique").innerHTML = "<p>Vendeur introuvable</p>"; return; }
+    try {
+        const reponse = await fetch(`${API}/boutique/${id}`);
+        const data = await reponse.json();
+        document.getElementById("nom-boutique").innerHTML = data.boutique.nom_boutique || data.boutique.nom;
+        document.getElementById("localisation-boutique").innerHTML = `📍 ${data.boutique.localisation_boutique || 'Non renseigné'}`;
+        document.getElementById("num-whatsapp").innerHTML = data.boutique.num_whatsapp || 'Non renseigné';
+        const zone = document.getElementById("produits-boutique");
+        zone.innerHTML = "";
+        if (data.produits.length === 0) { zone.innerHTML = "<p style='text-align:center;color:#64748b;'>Aucun produit disponible</p>"; return; }
+        data.produits.forEach(p => {
+            zone.innerHTML += `
+                <div class="carte">
+                    <img src="${p.image_url || 'https://via.placeholder.com/400x300'}" class="image-produit">
+                    <div class="info-produit">
+                        <h3>${p.nom_produit}</h3><p class="prix">${p.prix} FCFA</p>
+                        <span class="categorie">${p.categorie}</span>
+                        <div class="boutons"><a href="produit.html?id=${p.id}" class="btn voir">Voir</a><a href="produit.html?id=${p.id}" class="btn commander">Commander</a></div>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (erreur) {
+        afficherNotification("Erreur de chargement", "error");
+    }
+}
+</script>
+</body>
+</html>

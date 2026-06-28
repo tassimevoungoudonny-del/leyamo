@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Inscription - Leyamo</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="login-container">
+    <div class="login-box">
+        <h2>Inscription <span>vendeur</span></h2>
+        <label for="nom">Nom complet *</label><input type="text" id="nom" placeholder="Ex: Jean Dupont">
+        <label for="email">Email *</label><input type="email" id="email" placeholder="Ex: jean@exemple.com">
+        <label for="mot_de_passe">Mot de passe *</label><input type="password" id="mot_de_passe" placeholder="Minimum 6 caractères">
+        <label for="num_whatsapp">Numéro WhatsApp *</label><input type="text" id="num_whatsapp" placeholder="Ex: 699999999">
+        <label for="nom_boutique">Nom de la boutique *</label><input type="text" id="nom_boutique" placeholder="Ex: Tech Store">
+        <label for="localisation_boutique">Localisation *</label><input type="text" id="localisation_boutique" placeholder="Ex: Douala, Yaoundé">
+        <label for="localisation_detaillee">Localisation détaillée</label><input type="text" id="localisation_detaillee" placeholder="Ex: Yaoundé - Ekounou">
+        <button onclick="inscription()">Créer mon compte</button>
+        <p id="message"></p>
+        <p style="text-align:center;margin-top:15px;">Déjà un compte ? <a href="connexion.html" style="color:#0f766e;text-decoration:none;">Connectez-vous</a></p>
+    </div>
+</div>
+<script src="inscription.js"></script><script src="notifications.js"></script>
+</body>
+</html>

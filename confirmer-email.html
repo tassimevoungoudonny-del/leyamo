@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Confirmation email - Leyamo</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="login-container">
+    <div class="login-box">
+        <h2>📧 Confirmation <span>email</span></h2>
+        <div id="message">Vérification en cours...</div>
+        <div style="text-align:center;margin-top:15px;"><a href="connexion.html" style="color:#0f766e;text-decoration:none;">🔑 Aller à la connexion</a></div>
+    </div>
+</div>
+<script>
+const API = "http://127.0.0.1:5000";
+const token = new URLSearchParams(window.location.search).get("token");
+
+async function confirmerEmail() {
+    if (!token) {
+        document.getElementById("message").innerHTML = "❌ Token manquant";
+        document.getElementById("message").style.color = "red";
+        return;
+    }
+    try {
+        const reponse = await fetch(`${API}/confirmer-email?token=${token}`);
+        const data = await reponse.json();
+        if (reponse.status === 200) {
+            document.getElementById("message").innerHTML = `✅ ${data.message}`;
+            document.getElementById("message").style.color = "green";
+            setTimeout(() => { window.location.href = "connexion.html"; }, 3000);
+        } else {
+            document.getElementById("message").innerHTML = `❌ ${data.message}`;
+            document.getElementById("message").style.color = "red";
+        }
+    } catch (erreur) {
+        document.getElementById("message").innerHTML = "❌ Erreur réseau";
+        document.getElementById("message").style.color = "red";
+    }
+}
+confirmerEmail();
+</script>
+</body>
+</html>

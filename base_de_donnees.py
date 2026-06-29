@@ -18,7 +18,6 @@ def obtenir_connexion():
             )
             return conn
         else:
-            # Fallback local
             conn = pymysql.connect(
                 host=DB_CONFIG['host'],
                 user=DB_CONFIG['user'],

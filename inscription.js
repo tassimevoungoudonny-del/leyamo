@@ -1,4 +1,4 @@
-const API = "http://127.0.0.1:5000";
+const API = "";
 
 async function inscription() {
     const nom = document.getElementById("nom").value.trim();

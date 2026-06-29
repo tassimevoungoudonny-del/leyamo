@@ -11,72 +11,20 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from marshmallow import Schema, fields, validate, ValidationError
-import hmac
-import hashlib
-import base64
-import urllib.parse
 
 from config import (
     JWT_SECRET, UPLOAD_CONFIG, MAILGUN_API_KEY, MAILGUN_DOMAIN,
-    R2_CONFIG, FRONTEND_URL, BACKEND_URL
+    R2_CONFIG, FRONTEND_URL, BACKEND_URL, DATABASE_URL
 )
 from base_de_donnees import obtenir_connexion
 
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = JWT_SECRET
-CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000"])
+CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", "https://*.onrender.com"])
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ==========================================
-# FONCTIONS POUR LA SIGNATURE AWS V4
-# ==========================================
-def sign_v4(key, msg):
-    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
-
-def get_signature_key(key, date_stamp, region_name, service_name):
-    k_date = sign_v4(('AWS4' + key).encode('utf-8'), date_stamp)
-    k_region = sign_v4(k_date, region_name)
-    k_service = sign_v4(k_region, service_name)
-    k_signing = sign_v4(k_service, 'aws4_request')
-    return k_signing
-
-def generate_s3_upload_url(bucket, key, access_key, secret_key, endpoint_url, region='auto'):
-    """
-    Génère une URL pré-signée pour un upload direct vers R2 (ou S3)
-    """
-    method = 'PUT'
-    host = endpoint_url.replace('https://', '')
-    date = datetime.utcnow()
-    amz_date = date.strftime('%Y%m%dT%H%M%SZ')
-    date_stamp = date.strftime('%Y%m%d')
-    canonical_uri = f'/{bucket}/{key}'
-    canonical_querystring = ''
-    payload_hash = hashlib.sha256(''.encode('utf-8')).hexdigest()
-    canonical_headers = f'host:{host}\nx-amz-date:{amz_date}\nx-amz-acl:public-read\n'
-    signed_headers = 'host;x-amz-date;x-amz-acl'
-    canonical_request = f'{method}\n{canonical_uri}\n{canonical_querystring}\n{canonical_headers}\n{signed_headers}\n{payload_hash}'
-    
-    algorithm = 'AWS4-HMAC-SHA256'
-    credential_scope = f'{date_stamp}/{region}/s3/aws4_request'
-    string_to_sign = f'{algorithm}\n{amz_date}\n{credential_scope}\n{hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()}'
-    
-    signing_key = get_signature_key(secret_key, date_stamp, region, 's3')
-    signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
-    
-    authorization = f'{algorithm} Credential={access_key}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}'
-    
-    url = f'{endpoint_url}/{bucket}/{key}'
-    headers = {
-        'x-amz-date': amz_date,
-        'x-amz-acl': 'public-read',
-        'Authorization': authorization,
-        'Host': host,
-        'Content-Type': 'application/octet-stream'
-    }
-    return url, headers
 
 # ==========================================
 # SCHEMAS
@@ -127,19 +75,17 @@ def require_csrf(f):
 # FONCTIONS UTILITAIRES
 # ==========================================
 def hash_mot_de_passe(mot_de_passe):
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(mot_de_passe.encode('utf-8'), salt).decode('utf-8')
+    return bcrypt.hashpw(mot_de_passe.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def verifier_mot_de_passe(mot_de_passe, hash_stocke):
     return bcrypt.checkpw(mot_de_passe.encode('utf-8'), hash_stocke.encode('utf-8'))
 
 def generer_jwt(user_id, role='vendeur'):
-    payload = {
-        'user_id': user_id,
-        'role': role,
-        'exp': datetime.utcnow() + timedelta(days=7)
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+    return jwt.encode(
+        {'user_id': user_id, 'role': role, 'exp': datetime.utcnow() + timedelta(days=7)},
+        JWT_SECRET,
+        algorithm='HS256'
+    )
 
 def verifier_jwt(token):
     try:
@@ -184,7 +130,6 @@ def envoyer_notification(type_notif, destinataire, destinataire_id, message, lie
 
 def envoyer_email_confirmation(email, nom, token):
     if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
-        logger.warning("Mailgun non configuré, email non envoyé")
         return False
     lien = f"{FRONTEND_URL}/confirmer-email?token={token}"
     html = f"""
@@ -230,9 +175,18 @@ def health():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    # Compatibilité avec l'ancien système
     return send_from_directory('uploads', filename)
 
+@app.route('/<path:path>')
+def serve_static(path):
+    try:
+        return send_from_directory('.', path)
+    except FileNotFoundError:
+        return jsonify({"error": "Fichier non trouvé"}), 404
+
+# ==========================================
+# PAGE PRODUIT (HTML)
+# ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
     conn = obtenir_connexion()
@@ -261,7 +215,9 @@ def afficher_produit_html(id):
     url_og = f"{FRONTEND_URL}/produit/{id}"
     return render_template("produit.html", produit=produit, image_og=image_og, titre_og=titre_og, description_og=description_og, url_og=url_og, FRONTEND_URL=FRONTEND_URL)
 
-# ---------- AUTH ----------
+# ==========================================
+# AUTHENTIFICATION VENDEUR
+# ==========================================
 @app.route('/vendeurs/inscription', methods=['POST'])
 def inscription_vendeur():
     try:
@@ -353,7 +309,9 @@ def confirmer_email():
     log_action("confirmation_email", f"Email: {token_data['email']}", request.remote_addr)
     return jsonify({"message": "Email confirmé avec succès !"})
 
-# ---------- PRODUITS PUBLIC ----------
+# ==========================================
+# PRODUITS (PUBLIC)
+# ==========================================
 @app.route('/produits', methods=['GET'])
 def voir_produits():
     page = request.args.get('page', 1, type=int)
@@ -483,7 +441,9 @@ def boutique_vendeur(id_vendeur):
     conn.close()
     return jsonify({"boutique": vendeur, "produits": produits})
 
-# ---------- PRODUITS CRUD ----------
+# ==========================================
+# PRODUITS (CRUD VENDEUR)
+# ==========================================
 @app.route('/produits', methods=['POST'])
 @require_csrf
 def ajouter_produit():
@@ -495,7 +455,7 @@ def ajouter_produit():
         data = ProduitSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
-    conn = obtenir_connexion()
+    conn = obtener_connexion()
     cur = conn.cursor()
     cur.execute("SELECT id FROM produits WHERE nom_produit = %s AND id_vendeur = %s", (data['nom_produit'], id_vendeur))
     if cur.fetchone():
@@ -576,7 +536,9 @@ def supprimer_produit(id):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ---------- UPLOAD VERS R2 AVEC REQUESTS ----------
+# ==========================================
+# UPLOAD IMAGES (local pour Render)
+# ==========================================
 @app.route('/upload/<int:produit_id>', methods=['POST'])
 @require_csrf
 def upload_images(produit_id):
@@ -584,8 +546,7 @@ def upload_images(produit_id):
     id_vendeur = get_vendeur_id(token)
     if not id_vendeur:
         return jsonify({"status": "error", "message": "Non authentifié"}), 401
-
-    conn = obtenir_connexion()
+    conn = obtener_connexion()
     cur = conn.cursor()
     cur.execute("SELECT id_vendeur FROM produits WHERE id = %s", (produit_id,))
     produit = cur.fetchone()
@@ -593,18 +554,11 @@ def upload_images(produit_id):
         cur.close()
         conn.close()
         return jsonify({"status": "error", "message": "Accès refusé"}), 403
-
     fichiers = request.files.getlist('images')
     if len(fichiers) > UPLOAD_CONFIG['max_files']:
         return jsonify({"status": "error", "message": f"Maximum {UPLOAD_CONFIG['max_files']} images"}), 400
-
     images_urls = []
-    access_key = R2_CONFIG['access_key']
-    secret_key = R2_CONFIG['secret_key']
-    endpoint_url = R2_CONFIG['endpoint_url']
-    bucket = R2_CONFIG['bucket_name']
-    region = 'auto'  # R2 utilise 'auto' comme région
-
+    os.makedirs('uploads', exist_ok=True)
     for i, fichier in enumerate(fichiers):
         if fichier and allowed_file(fichier.filename):
             fichier.seek(0, os.SEEK_END)
@@ -612,52 +566,20 @@ def upload_images(produit_id):
             fichier.seek(0)
             if taille > UPLOAD_CONFIG['max_file_size']:
                 return jsonify({"status": "error", "message": "Chaque image < 10 Mo"}), 400
-
             nom_secure = secure_filename(fichier.filename)
             nom_unique = f"produit_{produit_id}_{i}_{nom_secure}"
-
-            try:
-                # Générer l'URL et les headers pour l'upload
-                upload_url, headers = generate_s3_upload_url(
-                    bucket, nom_unique, access_key, secret_key, endpoint_url, region
-                )
-
-                # Lire le contenu du fichier
-                fichier.seek(0)
-                content = fichier.read()
-
-                # Effectuer l'upload
-                response = requests.put(
-                    upload_url,
-                    data=content,
-                    headers=headers,
-                    timeout=60
-                )
-
-                if response.status_code == 200:
-                    # Construire l'URL publique
-                    public_url = f"{endpoint_url}/{bucket}/{nom_unique}"
-                    # Sauvegarder en base
-                    cur.execute(
-                        "INSERT INTO images_produits (produit_id, image_url, ordre) VALUES (%s, %s, %s)",
-                        (produit_id, public_url, i)
-                    )
-                    images_urls.append(public_url)
-                    logger.info(f"Image uploadée vers R2 : {public_url}")
-                else:
-                    logger.error(f"Erreur upload R2: {response.status_code} - {response.text}")
-                    return jsonify({"status": "error", "message": f"Erreur upload vers R2: {response.status_code}"}), 500
-            except Exception as e:
-                logger.error(f"Erreur upload R2: {e}")
-                return jsonify({"status": "error", "message": "Erreur lors de l'upload"}), 500
-
+            chemin = os.path.join('uploads', nom_unique)
+            fichier.save(chemin)
+            url = f"{BACKEND_URL}/uploads/{nom_unique}"
+            cur.execute("INSERT INTO images_produits (produit_id, image_url, ordre) VALUES (%s, %s, %s)", (produit_id, url, i))
+            images_urls.append(url)
     conn.commit()
     cur.close()
     conn.close()
     log_action("upload_images", f"Produit ID: {produit_id}, {len(images_urls)} images", request.remote_addr)
     return jsonify({
         "status": "success",
-        "message": f"{len(images_urls)} images uploadées vers R2",
+        "message": f"{len(images_urls)} images uploadées",
         "images": images_urls
     }), 201
 
@@ -671,7 +593,9 @@ def clic_whatsapp(id):
     conn.close()
     return jsonify({"status": "success", "message": "Clic WhatsApp enregistré"})
 
-# ---------- DASHBOARD ----------
+# ==========================================
+# DASHBOARD VENDEUR
+# ==========================================
 @app.route('/vendeurs/me/dashboard', methods=['GET'])
 def me_dashboard():
     token = request.headers.get("Authorization")
@@ -731,7 +655,9 @@ def supprimer_compte_vendeur():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# ---------- SIGNALEMENTS ----------
+# ==========================================
+# SIGNALEMENTS
+# ==========================================
 @app.route('/produits/<int:id>/signaler', methods=['POST'])
 def signaler_produit(id):
     try:
@@ -754,19 +680,26 @@ def signaler_produit(id):
     conn.close()
     return jsonify({"status": "success", "message": "Signalement enregistré"}), 201
 
-# ---------- ADMIN ----------
+# ==========================================
+# ADMIN
+# ==========================================
 @app.route('/admin/connexion', methods=['POST'])
 def admin_connexion():
     data = request.get_json()
-    email = data.get('email')
-    mot_de_passe = data.get('mot_de_passe')
-
-    if email == 'admin@leyamo.com' and mot_de_passe == 'admin123':
-        token_jwt = generer_jwt(1, role='admin')
-        csrf_token = generer_token_csrf()
-        return jsonify({"message": "Connexion admin réussie", "token": token_jwt, "csrf_token": csrf_token})
-    else:
+    if not data.get('email') or not data.get('mot_de_passe'):
+        return jsonify({"message": "Email et mot de passe obligatoires"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM admins WHERE email = %s", (data['email'],))
+    admin = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not admin or not verifier_mot_de_passe(data['mot_de_passe'], admin['mot_de_passe']):
         return jsonify({"message": "Identifiants incorrects"}), 401
+    token_jwt = generer_jwt(admin["id"], role='admin')
+    csrf_token = generer_token_csrf()
+    return jsonify({"message": "Connexion admin réussie", "token": token_jwt, "csrf_token": csrf_token})
+
 @app.route('/admin/vendeurs', methods=['GET'])
 def admin_vendeurs():
     if not get_admin_id(request.headers.get("Authorization")):
@@ -994,13 +927,9 @@ def admin_notification_lu(id):
     conn.close()
     return jsonify({"status": "success", "message": "Notification marquée comme lue"})
 
-# ---------- STATIC ----------
-@app.route('/<path:path>')
-def serve_static(path):
-    if os.path.exists(path):
-        return send_from_directory('.', path)
-    return jsonify({"error": "Fichier non trouvé"}), 404
-
+# ==========================================
+# LANCEMENT
+# ==========================================
 if __name__ == "__main__":
     os.makedirs('uploads', exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)

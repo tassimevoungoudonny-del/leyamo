@@ -1,4 +1,4 @@
-const API = "http://127.0.0.1:5000";
+const API = "";
 const token = localStorage.getItem("token");
 const csrf_token = localStorage.getItem("csrf_token");
 
@@ -15,7 +15,7 @@ async function chargerAdmin() {
     await chargerSignalements();
 }
 
-// --- STATS ---
+// ---------- STATS ----------
 async function chargerStats() {
     try {
         const reponse = await fetch(`${API}/admin/stats`, { headers: { "Authorization": token } });
@@ -71,7 +71,7 @@ function afficherTopVendeurs(vendeurs) {
     });
 }
 
-// --- VENDEURS ---
+// ---------- VENDEURS ----------
 async function chargerVendeurs() {
     try {
         const reponse = await fetch(`${API}/admin/vendeurs`, { headers: { "Authorization": token } });
@@ -138,7 +138,7 @@ async function refuserVendeur(id) {
     } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
-// --- PRODUITS ---
+// ---------- PRODUITS ----------
 async function chargerProduits(filtre = 'recent', page = 1) {
     filtreActuel = filtre;
     try {
@@ -230,7 +230,7 @@ async function validerProduit(id, statut) {
     } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
-// --- SIGNALEMENTS ---
+// ---------- SIGNALEMENTS ----------
 async function chargerSignalements() {
     try {
         const reponse = await fetch(`${API}/admin/signalements`, { headers: { "Authorization": token } });
@@ -269,7 +269,7 @@ async function traiterSignalement(id) {
     } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
-// --- PUBLIER ---
+// ---------- PUBLIER ----------
 async function chargerProduitsPourPublication() {
     try {
         const reponse = await fetch(`${API}/admin/produits?filtre=recent&limit=100`, { headers: { "Authorization": token } });
@@ -290,11 +290,10 @@ async function publierProduit() {
     const plateforme = document.getElementById("plateforme-publier").value;
     let message = document.getElementById("message-publier").value.trim();
     if (!produitId) { afficherNotification("Sélectionnez un produit", "error"); return; }
-    // Si message vide, on génère un message automatique
     if (!message) {
-        message = `🔥 Découvrez ce produit sur Leyamo !\n\nhttp://127.0.0.1:5000/produit/${produitId}`;
+        message = `🔥 Découvrez ce produit sur Leyamo !\n\n${window.location.origin}/produit/${produitId}`;
     } else {
-        const lien = `http://127.0.0.1:5000/produit/${produitId}`;
+        const lien = `${window.location.origin}/produit/${produitId}`;
         if (!message.includes(lien)) {
             message += `\n\n🔗 Lien : ${lien}`;
         }
@@ -315,7 +314,7 @@ async function publierProduit() {
     } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
-// --- LOGS ---
+// ---------- LOGS ----------
 async function chargerLogs(page = 1) {
     logsPage = page;
     try {
@@ -363,7 +362,6 @@ function afficherPaginationLogs(pagination) {
     }
 }
 
-// --- ONGLETS ---
 document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", function() {

@@ -1,6 +1,3 @@
-// ============================================
-// LEYAMO V1.1 – SYSTÈME DE NOTIFICATIONS TOAST
-// ============================================
 function afficherNotification(message, type = "success", duree = 3500) {
     let container = document.getElementById("toast-container");
     if (!container) {

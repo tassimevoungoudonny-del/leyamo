@@ -1,6 +1,9 @@
 -- ============================================
 -- LEYAMO V1.1 – BASE DE DONNÉES COMPLÈTE
 -- ============================================
+-- ============================================
+-- LEYAMO V1.1 – BASE DE DONNÉES COMPLÈTE
+-- ============================================
 
 DROP DATABASE IF EXISTS leyamo1_1;
 CREATE DATABASE leyamo1_1;
@@ -31,7 +34,7 @@ CREATE TABLE vendeurs (
     nom_boutique VARCHAR(100),
     statut ENUM('en_attente', 'valide', 'refuse') DEFAULT 'en_attente',
     motif_refus TEXT,
-    email_confirme BOOLEAN DEFAULT false,
+    email_confirme BOOLEAN DEFAULT TRUE,
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -69,7 +72,7 @@ CREATE TABLE images_produits (
 );
 
 -- ============================================
--- TABLE EMAIL TOKENS (confirmation email)
+-- TABLE EMAIL TOKENS
 -- ============================================
 CREATE TABLE email_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -81,7 +84,7 @@ CREATE TABLE email_tokens (
 );
 
 -- ============================================
--- TABLE NOTIFICATIONS (pour admin et vendeurs)
+-- TABLE NOTIFICATIONS
 -- ============================================
 CREATE TABLE notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -108,7 +111,7 @@ CREATE TABLE signalements (
 );
 
 -- ============================================
--- TABLE LOGS (piste d'audit)
+-- TABLE LOGS
 -- ============================================
 CREATE TABLE logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,7 +123,6 @@ CREATE TABLE logs (
 
 -- ============================================
 -- ADMIN PAR DÉFAUT (email: admin@leyamo.com / mot de passe: admin123)
--- Le mot de passe est haché avec bcrypt
 -- ============================================
 INSERT INTO admins (email, mot_de_passe, nom)
 VALUES (
@@ -133,8 +135,4 @@ VALUES (
 -- VÉRIFICATION
 -- ============================================
 SHOW TABLES;
-ALTER TABLE vendeurs MODIFY email_confirme BOOLEAN DEFAULT TRUE;
-SELECT id, email, email_confirme FROM vendeurs;
-select* from vendeurs;
-INSERT INTO admins (email, mot_de_passe, nom)
-VALUES ('admin@leyamo.com', '$2b$12$9mXTHSEhQnC/23fR9l7UY.6JO5xN6KpG/5WqNhjYhv/xQ3wAsS2ii', 'Administrateur');
+SELECT * FROM admins;

@@ -1,4 +1,5 @@
-const API = "";
+const API = "";  // URL relative
+
 let categorieActuelle = "all", genreActuel = "all", limit = 30;
 
 // ============ LOADER ============

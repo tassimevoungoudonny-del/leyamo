@@ -161,6 +161,19 @@ def allowed_file(filename):
 # ==========================================
 # ROUTES
 # ==========================================
+@app.route('/test-db')
+def test_db():
+    from base_de_donnees import obtenir_connexion
+    try:
+        conn = obtenir_connexion()
+        if conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            return {"status": "DB OK", "message": "Connexion réussie"}
+        else:
+            return {"status": "DB FAIL", "message": "Échec de connexion"}, 500
+    except Exception as e:
+        return {"status": "DB ERROR", "message": str(e)}, 500
 @app.route('/csrf-token', methods=['GET'])
 def get_csrf_token():
     return jsonify({"csrf_token": generer_token_csrf()})

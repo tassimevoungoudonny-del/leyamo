@@ -5,7 +5,23 @@
 <header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Store</span></h2></div><nav><a href="index.html">Accueil</a><a href="connexion.html">Connexion</a><a href="inscription.html">Inscription</a></nav></header>
 <section class="hero">
     <h1>Trouvez les meilleurs produits près de chez vous</h1>
-    <div class="search-box"><input type="text" id="recherche" placeholder="Rechercher un produit..."><button onclick="rechercherProduit(1)">Rechercher</button><button onclick="reinitialiserRecherche()" style="border-radius:50px;margin-left:5px;">✕</button></div>
+   <div class="search-box">
+      <div class="search-input-wrapper">
+         <input type="text" id="recherche" placeholder="Rechercher un produit...">
+         <button onclick="rechercherProduit(1)" class="search-btn" aria-label="Rechercher">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+        </button>
+         <button onclick="reinitialiserRecherche()" id="clear-search" class="clear-btn" style="display:none;" aria-label="Effacer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+         </button>
+       </div>
+    </div>
     <div class="filtre-container">
         <div class="groupe-filtres"><span>Catégorie :</span><button class="filtre-btn active" data-categorie="all">Tous</button><button class="filtre-btn" data-categorie="Vêtements">👕 Vêtements</button><button class="filtre-btn" data-categorie="Chaussures">👟 Chaussures</button><button class="filtre-btn" data-categorie="Maillot">🏊 Maillot</button></div>
         <div class="groupe-filtres"><span>Genre :</span><button class="filtre-genre active" data-genre="all">Tous</button><button class="filtre-genre" data-genre="masculin">👨 Masculin</button><button class="filtre-genre" data-genre="feminin">👩 Féminin</button></div>

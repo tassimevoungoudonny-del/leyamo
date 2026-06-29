@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- OPEN GRAPH -->
+    <meta property="og:title" content="{{ titre_og }}" />
+    <meta property="og:description" content="{{ description_og }}" />
+    <meta property="og:image" content="{{ image_og }}" />
+    <meta property="og:url" content="{{ url_og }}" />
+    <meta property="og:type" content="product" />
+    <meta property="og:site_name" content="Leyamo" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ titre_og }}" />
+    <meta name="twitter:description" content="{{ description_og }}" />
+    <meta name="twitter:image" content="{{ image_og }}" />
+    <title>{{ titre_og }} - Leyamo</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="fiche-produit">
+    <div id="galerie">
+        <img id="image-principale" src="{{ image_og }}" alt="Photo du produit">
+        <div id="miniatures">
+            {% for img in produit.images %}
+                <img src="{{ img }}" class="{% if loop.index0 == 0 %}active{% endif %}" onclick="changeImage(this)">
+            {% endfor %}
+        </div>
+    </div>
+    <h1 id="nom">{{ produit.nom_produit }}</h1>
+    <p id="prix">{{ produit.prix }} FCFA</p>
+    <p id="categorie">{{ produit.categorie }}</p>
+    <p id="description">{{ produit.description_produit }}</p>
+    <p id="localisation">📍 <span>{{ produit.localisation_detaillee or produit.localisation_boutique or 'Non renseigné' }}</span></p>
+    <p id="vues">👁 {{ produit.vues or 0 }} vues</p>
+    <h3 id="boutique">🏪 {{ produit.nom_boutique or 'Boutique' }}</h3>
+    <button id="btn-whatsapp" onclick="commander()">Commander sur WhatsApp</button>
+</div>
+<script>
+function changeImage(img) {
+    document.getElementById("image-principale").src = img.src;
+    document.querySelectorAll("#miniatures img").forEach(i => i.className = "");
+    img.className = "active";
+}
+function commander() {
+    const num = "{{ produit.num_whatsapp }}";
+    const nom = "{{ produit.nom_produit }}";
+    const prix = "{{ produit.prix }}";
+    const url = "{{ url_og }}";
+    const message = encodeURIComponent(
+        `Bonjour,\n\nJe viens de voir votre produit sur Leyamo (la marketplace africaine) :\n\n📦 ${nom}\n💰 ${prix} FCFA\n\n🔗 Lien du produit : ${url}\n\nPouvez-vous me donner plus d'informations ?\n\nMerci.`
+    );
+    window.open(`https://wa.me/237${num}?text=${message}`, "_blank");
+}
+</script>
+<script src="/notifications.js"></script>
+</body>
+</html>

@@ -455,7 +455,7 @@ def ajouter_produit():
         data = ProduitSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
-    conn = obtener_connexion()
+    conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("SELECT id FROM produits WHERE nom_produit = %s AND id_vendeur = %s", (data['nom_produit'], id_vendeur))
     if cur.fetchone():
@@ -546,7 +546,7 @@ def upload_images(produit_id):
     id_vendeur = get_vendeur_id(token)
     if not id_vendeur:
         return jsonify({"status": "error", "message": "Non authentifié"}), 401
-    conn = obtener_connexion()
+    conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("SELECT id_vendeur FROM produits WHERE id = %s", (produit_id,))
     produit = cur.fetchone()

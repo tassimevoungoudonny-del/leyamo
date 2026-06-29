@@ -1,4 +1,4 @@
-const API = "http://127.0.0.1:5000";
+const API = "";
 let categorieActuelle = "all", genreActuel = "all", limit = 30;
 
 // ============ LOADER ============

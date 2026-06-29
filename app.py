@@ -161,6 +161,21 @@ def allowed_file(filename):
 # ==========================================
 # ROUTES
 # ==========================================
+@app.route('/test-insert')
+def test_insert():
+    from base_de_donnees import obtenir_connexion
+    try:
+        conn = obtenir_connexion()
+        cur = conn.cursor()
+        # Insertion minimale pour tester
+        cur.execute("""
+            INSERT INTO vendeurs (nom, email, mot_de_passe) 
+            VALUES ('test', 'test@test.com', 'test')
+        """)
+        conn.commit()
+        return {"status": "INSERT OK"}
+    except Exception as e:
+        return {"status": "INSERT FAIL", "error": str(e)}, 500
 @app.route('/test-db')
 def test_db():
     from base_de_donnees import obtenir_connexion

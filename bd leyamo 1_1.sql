@@ -1,18 +1,15 @@
 -- ============================================
 -- LEYAMO V1.1 – BASE DE DONNÉES COMPLÈTE
 -- ============================================
--- ============================================
--- LEYAMO V1.1 – BASE DE DONNÉES COMPLÈTE
--- ============================================
 
-DROP DATABASE IF EXISTS leyamo1_1;
-CREATE DATABASE leyamo1_1;
+-- Créer la base si elle n'existe pas
+CREATE DATABASE IF NOT EXISTS leyamo1_1;
 USE leyamo1_1;
 
 -- ============================================
 -- TABLE ADMIN
 -- ============================================
-CREATE TABLE admins (
+CREATE TABLE IF NOT EXISTS admins (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) UNIQUE NOT NULL,
     mot_de_passe VARCHAR(255) NOT NULL,
@@ -21,9 +18,9 @@ CREATE TABLE admins (
 );
 
 -- ============================================
--- TABLE VENDEURS
+-- TABLE VENDEURS (la plus importante)
 -- ============================================
-CREATE TABLE vendeurs (
+CREATE TABLE IF NOT EXISTS vendeurs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -41,7 +38,7 @@ CREATE TABLE vendeurs (
 -- ============================================
 -- TABLE PRODUITS
 -- ============================================
-CREATE TABLE produits (
+CREATE TABLE IF NOT EXISTS produits (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nom_produit VARCHAR(100) NOT NULL,
     description_produit TEXT,
@@ -62,7 +59,7 @@ CREATE TABLE produits (
 -- ============================================
 -- TABLE IMAGES PRODUITS
 -- ============================================
-CREATE TABLE images_produits (
+CREATE TABLE IF NOT EXISTS images_produits (
     id INT AUTO_INCREMENT PRIMARY KEY,
     produit_id INT NOT NULL,
     image_url VARCHAR(255) NOT NULL,
@@ -74,7 +71,7 @@ CREATE TABLE images_produits (
 -- ============================================
 -- TABLE EMAIL TOKENS
 -- ============================================
-CREATE TABLE email_tokens (
+CREATE TABLE IF NOT EXISTS email_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) NOT NULL,
     token VARCHAR(255) NOT NULL,
@@ -86,7 +83,7 @@ CREATE TABLE email_tokens (
 -- ============================================
 -- TABLE NOTIFICATIONS
 -- ============================================
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type VARCHAR(50) NOT NULL,
     destinataire ENUM('admin', 'vendeur') NOT NULL,
@@ -100,7 +97,7 @@ CREATE TABLE notifications (
 -- ============================================
 -- TABLE SIGNALEMENTS
 -- ============================================
-CREATE TABLE signalements (
+CREATE TABLE IF NOT EXISTS signalements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     produit_id INT NOT NULL,
     motif VARCHAR(100) NOT NULL,
@@ -113,7 +110,7 @@ CREATE TABLE signalements (
 -- ============================================
 -- TABLE LOGS
 -- ============================================
-CREATE TABLE logs (
+CREATE TABLE IF NOT EXISTS logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     action VARCHAR(100) NOT NULL,
     details TEXT,
@@ -125,14 +122,12 @@ CREATE TABLE logs (
 -- ADMIN PAR DÉFAUT (email: admin@leyamo.com / mot de passe: admin123)
 -- ============================================
 INSERT INTO admins (email, mot_de_passe, nom)
-VALUES (
-    'admin@leyamo.com',
-    '$2b$12$9mXTHSEhQnC/23fR9l7UY.6JO5xN6KpG/5WqNhjYhv/xQ3wAsS2ii',
-    'Administrateur'
-);
+SELECT 'admin@leyamo.com', '$2b$12$9mXTHSEhQnC/23fR9l7UY.6JO5xN6KpG/5WqNhjYhv/xQ3wAsS2ii', 'Administrateur'
+WHERE NOT EXISTS (SELECT 1 FROM admins WHERE email = 'admin@leyamo.com');
 
 -- ============================================
 -- VÉRIFICATION
 -- ============================================
 SHOW TABLES;
 SELECT * FROM admins;
+SELECT id, email, email_confirme FROM vendeurs LIMIT 0;

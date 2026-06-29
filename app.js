@@ -182,6 +182,18 @@ document.addEventListener("DOMContentLoaded", function() {
         if (e.key === "Enter") rechercherProduit(1);
     });
 });
+// Afficher/masquer la croix selon la présence de texte
+document.getElementById("recherche").addEventListener("input", function() {
+    const clearBtn = document.getElementById("clear-search");
+    if (this.value.length > 0) {
+        clearBtn.style.display = "flex";
+    } else {
+        clearBtn.style.display = "none";
+    }
+});
+
+// Fonction déjà existante : reinitialiserRecherche()
+// Elle vide le champ, cache la croix et recharge les produits
 
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;

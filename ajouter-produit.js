@@ -1,6 +1,20 @@
 const API = "";
 let imagesSelectionnees = [];
 
+// ============ LOADER ============
+function afficherLoader(actif) {
+    let overlay = document.getElementById("loader-overlay");
+    if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.id = "loader-overlay";
+        overlay.className = "loader-overlay";
+        overlay.innerHTML = `<div class="spinner"></div>`;
+        document.body.appendChild(overlay);
+    }
+    overlay.className = `loader-overlay${actif ? ' active' : ''}`;
+}
+
+// ============ PRÉVISUALISATION DES IMAGES ============
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("images_produit").addEventListener("change", function() {
         const preview = document.getElementById("preview-images");
@@ -29,6 +43,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+// ============ AJOUT DU PRODUIT ============
 async function ajouterProduit() {
     const token = localStorage.getItem("token");
     const csrf_token = localStorage.getItem("csrf_token");

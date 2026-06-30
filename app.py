@@ -252,35 +252,73 @@ def inscription_vendeur():
         data = InscriptionSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
+
     mdp_hash = hash_mot_de_passe(data['mot_de_passe'])
     conn = obtenir_connexion()
     if not conn:
         return jsonify({"message": "Erreur connexion BD"}), 500
+
     cur = conn.cursor()
     try:
+        # Insertion principale
         cur.execute("""
-            INSERT INTO vendeurs (nom, email, mot_de_passe, num_whatsapp, localisation_boutique, localisation_detaillee, nom_boutique)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (data['nom'], data['email'], mdp_hash, data.get('num_whatsapp'), data.get('localisation_boutique'),
-              data.get('localisation_detaillee'), data.get('nom_boutique')))
+            INSERT INTO vendeurs (
+                nom, email, mot_de_passe,
+                num_whatsapp, localisation_boutique,
+                localisation_detaillee, nom_boutique,
+                email_confirme
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['nom'],
+            data['email'],
+            mdp_hash,
+            data.get('num_whatsapp', ''),
+            data.get('localisation_boutique', ''),
+            data.get('localisation_detaillee', ''),
+            data.get('nom_boutique', ''),
+            True
+        ))
         conn.commit()
         vendeur_id = cur.lastrowid
-        token = str(uuid.uuid4())
-        cur.execute("INSERT INTO email_tokens (email, token, type) VALUES (%s, %s, 'confirmation')", (data['email'], token))
-        conn.commit()
-        envoyer_email_confirmation(data['email'], data['nom'], token)
-        log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
-        envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin.html#vendeurs")
+
+        # ==== BLOQUE : on va tester chaque fonction une par une ====
+        try:
+            token = str(uuid.uuid4())
+            cur.execute(
+                "INSERT INTO email_tokens (email, token, type, date_expiration) VALUES (%s, %s, 'confirmation', NOW() + INTERVAL 24 HOUR)",
+                (data['email'], token)
+            )
+            conn.commit()
+        except Exception as e_token:
+            return jsonify({"status": "error", "message": "Erreur email_tokens", "detail": str(e_token)}), 500
+
+        try:
+            envoyer_email_confirmation(data['email'], data['nom'], token)
+        except Exception as e_mail:
+            return jsonify({"status": "error", "message": "Erreur envoi email", "detail": str(e_mail)}), 500
+
+        try:
+            log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
+        except Exception as e_log:
+            return jsonify({"status": "error", "message": "Erreur log_action", "detail": str(e_log)}), 500
+
+        try:
+            envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin.html#vendeurs")
+        except Exception as e_notif:
+            return jsonify({"status": "error", "message": "Erreur envoyer_notification", "detail": str(e_notif)}), 500
+
         cur.close()
         conn.close()
         return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
+
     except Exception as e:
         import traceback
+        conn.rollback()
         return jsonify({
             "status": "error",
             "message": str(e),
             "traceback": traceback.format_exc()
-    }), 500
+        }), 500
 @app.route('/vendeurs/connexion', methods=['POST'])
 def connexion_vendeur():
     data = request.get_json()

@@ -275,8 +275,12 @@ def inscription_vendeur():
         conn.close()
         return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
     except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+    }), 500
 @app.route('/vendeurs/connexion', methods=['POST'])
 def connexion_vendeur():
     data = request.get_json()

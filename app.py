@@ -1110,7 +1110,7 @@ def admin_valider_produit(id):
     motif = data.get('motif', '')
     if statut not in ['valide', 'refuse']:
         return jsonify({"status": "error", "message": "Statut invalide"}), 400
-    conn = obtener_connexion()
+    conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("SELECT nom_produit, id_vendeur FROM produits WHERE id = %s", (id,))
     produit = cur.fetchone()

@@ -9,11 +9,28 @@
         <input type="email" id="email" placeholder="Ex: jean@exemple.com">
         <label for="mot_de_passe">Mot de passe</label>
         <input type="password" id="mot_de_passe" placeholder="Votre mot de passe">
+        <a class="lien-oubli" onclick="ouvrirResetPassword()">Mot de passe oublié ?</a>
         <button onclick="connexion()">Se connecter</button>
         <p id="message"></p>
         <p style="text-align:center;margin-top:15px;">Pas encore de compte ? <a href="inscription.html" style="color:#0f766e;text-decoration:none;">Inscrivez-vous</a></p>
     </div>
 </div>
-<script src="connexion.js"></script><script src="notifications.js"></script>
+<script>
+function ouvrirResetPassword() {
+    const email = prompt("Entrez votre email pour réinitialiser votre mot de passe :");
+    if (email) {
+        fetch(`${API}/vendeurs/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        })
+        .then(res => res.json())
+        .then(data => afficherNotification(data.message, data.message.includes("envoyé") ? "success" : "error"))
+        .catch(() => afficherNotification("Erreur réseau", "error"));
+    }
+}
+</script>
+<script src="connexion.js"></script>
+<script src="notifications.js"></script>
 </body>
 </html>

@@ -42,6 +42,7 @@ class ProduitSchema(Schema):
     nom_produit = fields.Str(required=True, validate=validate.Length(min=2, max=100))
     description_produit = fields.Str()
     prix = fields.Float(required=True, validate=validate.Range(min=0))
+    promotion = fields.Int(validate=validate.Range(min=0, max=100))
     categorie = fields.Str(required=True)
     genre = fields.Str(validate=validate.OneOf(['masculin', 'feminin', 'unisexe']))
     image_url = fields.Str()
@@ -49,6 +50,9 @@ class ProduitSchema(Schema):
 class SignalementSchema(Schema):
     motif = fields.Str(required=True, validate=validate.Length(min=3))
     description = fields.Str()
+
+class ResetPasswordSchema(Schema):
+    email = fields.Email(required=True)
 
 # ==========================================
 # CSRF
@@ -155,40 +159,41 @@ def envoyer_email_confirmation(email, nom, token):
     except:
         return False
 
+def envoyer_email_reset(email, token):
+    if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
+        return False
+    lien = f"{FRONTEND_URL}/reset-password?token={token}"
+    html = f"""
+    <h1>Réinitialisation de votre mot de passe</h1>
+    <p>Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :</p>
+    <a href="{lien}">Réinitialiser mon mot de passe</a>
+    <p>Ce lien expire dans 24h.</p>
+    """
+    try:
+        r = requests.post(
+            f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
+            auth=("api", MAILGUN_API_KEY),
+            data={
+                "from": f"Leyamo <noreply@{MAILGUN_DOMAIN}>",
+                "to": [email],
+                "subject": "Réinitialisation mot de passe - Leyamo",
+                "html": html
+            },
+            timeout=30
+        )
+        return r.status_code == 200
+    except:
+        return False
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in UPLOAD_CONFIG['allowed_extensions']
+
+def formater_prix(prix):
+    return f"{int(prix):,}".replace(',', ' ')
 
 # ==========================================
 # ROUTES
 # ==========================================
-@app.route('/test-insert')
-def test_insert():
-    from base_de_donnees import obtenir_connexion
-    try:
-        conn = obtenir_connexion()
-        cur = conn.cursor()
-        # Insertion minimale pour tester
-        cur.execute("""
-            INSERT INTO vendeurs (nom, email, mot_de_passe) 
-            VALUES ('test', 'test@test.com', 'test')
-        """)
-        conn.commit()
-        return {"status": "INSERT OK"}
-    except Exception as e:
-        return {"status": "INSERT FAIL", "error": str(e)}, 500
-@app.route('/test-db')
-def test_db():
-    from base_de_donnees import obtenir_connexion
-    try:
-        conn = obtenir_connexion()
-        if conn:
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            return {"status": "DB OK", "message": "Connexion réussie"}
-        else:
-            return {"status": "DB FAIL", "message": "Échec de connexion"}, 500
-    except Exception as e:
-        return {"status": "DB ERROR", "message": str(e)}, 500
 @app.route('/csrf-token', methods=['GET'])
 def get_csrf_token():
     return jsonify({"csrf_token": generer_token_csrf()})
@@ -211,6 +216,35 @@ def serve_static(path):
         return send_from_directory('.', path)
     except FileNotFoundError:
         return jsonify({"error": "Fichier non trouvé"}), 404
+
+@app.route('/test-db')
+def test_db():
+    from base_de_donnees import obtenir_connexion
+    try:
+        conn = obtenir_connexion()
+        if conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            return {"status": "DB OK", "message": "Connexion réussie"}
+        else:
+            return {"status": "DB FAIL", "message": "Échec de connexion"}, 500
+    except Exception as e:
+        return {"status": "DB ERROR", "message": str(e)}, 500
+
+@app.route('/test-insert')
+def test_insert():
+    from base_de_donnees import obtenir_connexion
+    try:
+        conn = obtenir_connexion()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO vendeurs (nom, email, mot_de_passe) 
+            VALUES ('test', 'test@test.com', 'test')
+        """)
+        conn.commit()
+        return {"status": "INSERT OK"}
+    except Exception as e:
+        return {"status": "INSERT FAIL", "error": str(e)}, 500
 
 # ==========================================
 # PAGE PRODUIT (HTML)
@@ -252,20 +286,16 @@ def inscription_vendeur():
         data = InscriptionSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
-
     mdp_hash = hash_mot_de_passe(data['mot_de_passe'])
     conn = obtenir_connexion()
     if not conn:
         return jsonify({"message": "Erreur connexion BD"}), 500
-
     cur = conn.cursor()
     try:
-        # Insertion principale
         cur.execute("""
             INSERT INTO vendeurs (
-                nom, email, mot_de_passe,
-                num_whatsapp, localisation_boutique,
-                localisation_detaillee, nom_boutique,
+                nom, email, mot_de_passe, num_whatsapp,
+                localisation_boutique, localisation_detaillee, nom_boutique,
                 email_confirme
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
@@ -280,37 +310,18 @@ def inscription_vendeur():
         ))
         conn.commit()
         vendeur_id = cur.lastrowid
-
-        # ==== BLOQUE : on va tester chaque fonction une par une ====
-        try:
-            token = str(uuid.uuid4())
-            cur.execute(
-                "INSERT INTO email_tokens (email, token, type, date_expiration) VALUES (%s, %s, 'confirmation', NOW() + INTERVAL 24 HOUR)",
-                (data['email'], token)
-            )
-            conn.commit()
-        except Exception as e_token:
-            return jsonify({"status": "error", "message": "Erreur email_tokens", "detail": str(e_token)}), 500
-
-        try:
-            envoyer_email_confirmation(data['email'], data['nom'], token)
-        except Exception as e_mail:
-            return jsonify({"status": "error", "message": "Erreur envoi email", "detail": str(e_mail)}), 500
-
-        try:
-            log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
-        except Exception as e_log:
-            return jsonify({"status": "error", "message": "Erreur log_action", "detail": str(e_log)}), 500
-
-        try:
-            envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin.html#vendeurs")
-        except Exception as e_notif:
-            return jsonify({"status": "error", "message": "Erreur envoyer_notification", "detail": str(e_notif)}), 500
-
+        token = str(uuid.uuid4())
+        cur.execute(
+            "INSERT INTO email_tokens (email, token, type, date_expiration) VALUES (%s, %s, 'confirmation', NOW() + INTERVAL 24 HOUR)",
+            (data['email'], token)
+        )
+        conn.commit()
+        envoyer_email_confirmation(data['email'], data['nom'], token)
+        log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
+        envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin.html#vendeurs")
         cur.close()
         conn.close()
         return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
-
     except Exception as e:
         import traceback
         conn.rollback()
@@ -319,6 +330,7 @@ def inscription_vendeur():
             "message": str(e),
             "traceback": traceback.format_exc()
         }), 500
+
 @app.route('/vendeurs/connexion', methods=['POST'])
 def connexion_vendeur():
     data = request.get_json()
@@ -380,6 +392,85 @@ def confirmer_email():
     return jsonify({"message": "Email confirmé avec succès !"})
 
 # ==========================================
+# MOT DE PASSE OUBLIÉ
+# ==========================================
+@app.route('/vendeurs/reset-password', methods=['POST'])
+def reset_password():
+    try:
+        data = ResetPasswordSchema().load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"status": "error", "message": "Email invalide", "errors": err.messages}), 400
+    
+    email = data['email']
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"message": "Erreur connexion BD"}), 500
+    
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM vendeurs WHERE email = %s", (email,))
+    vendeur = cur.fetchone()
+    cur.close()
+    
+    if not vendeur:
+        return jsonify({"message": "Aucun compte associé à cet email"}), 404
+    
+    # Générer un token
+    token = str(uuid.uuid4())
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO email_tokens (email, token, type, date_expiration) VALUES (%s, %s, 'reset', NOW() + INTERVAL 24 HOUR)",
+        (email, token)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    # Envoyer l'email
+    envoyer_email_reset(email, token)
+    log_action("reset_password", f"Email: {email}", request.remote_addr)
+    
+    return jsonify({"message": "Email de réinitialisation envoyé"}), 200
+
+@app.route('/vendeurs/reset-password/confirm', methods=['POST'])
+def confirm_reset_password():
+    data = request.get_json()
+    token = data.get('token')
+    nouveau_mot_de_passe = data.get('nouveau_mot_de_passe')
+    
+    if not token or not nouveau_mot_de_passe:
+        return jsonify({"message": "Token et mot de passe requis"}), 400
+    
+    if len(nouveau_mot_de_passe) < 6:
+        return jsonify({"message": "Le mot de passe doit contenir au moins 6 caractères"}), 400
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT email FROM email_tokens WHERE token = %s AND type = 'reset' AND date_expiration > NOW()",
+        (token,)
+    )
+    token_data = cur.fetchone()
+    
+    if not token_data:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Token invalide ou expiré"}), 400
+    
+    email = token_data['email']
+    mdp_hash = hash_mot_de_passe(nouveau_mot_de_passe)
+    
+    cur.execute("UPDATE vendeurs SET mot_de_passe = %s WHERE email = %s", (mdp_hash, email))
+    conn.commit()
+    cur.execute("DELETE FROM email_tokens WHERE token = %s", (token,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
+    
+    return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
+
+# ==========================================
 # PRODUITS (PUBLIC)
 # ==========================================
 @app.route('/produits', methods=['GET'])
@@ -439,30 +530,67 @@ def filtrer_produits():
     offset = (page - 1) * limit
     categorie = request.args.get('categorie')
     genre = request.args.get('genre')
+    prix_min = request.args.get('prix_min', type=int)
+    prix_max = request.args.get('prix_max', type=int)
+    
     conn = obtenir_connexion()
     cur = conn.cursor()
     requete = "SELECT * FROM produits WHERE statut = 'valide'"
     params = []
+    
     if categorie and categorie != 'all':
         requete += " AND categorie = %s"
         params.append(categorie)
+    
     if genre and genre != 'all':
         requete += " AND (genre = %s OR genre = 'unisexe')"
         params.append(genre)
+    
+    if prix_min is not None:
+        requete += " AND prix >= %s"
+        params.append(prix_min)
+    
+    if prix_max is not None:
+        requete += " AND prix <= %s"
+        params.append(prix_max)
+    
     count_requete = requete.replace("SELECT *", "SELECT COUNT(*) as total")
     cur.execute(count_requete, params)
     total = cur.fetchone()['total']
+    
     requete += " ORDER BY date_creation DESC LIMIT %s OFFSET %s"
     params.extend([limit, offset])
+    
     cur.execute(requete, params)
     produits = cur.fetchall()
     cur.close()
     conn.close()
+    
     return jsonify({
         "status": "success",
         "data": produits,
         "pagination": {"page": page, "limit": limit, "total": total, "pages": (total + limit - 1) // limit if total > 0 else 1}
     })
+
+@app.route('/produits/autocomplete', methods=['GET'])
+def autocomplete_produits():
+    q = request.args.get('q', '')
+    if len(q) < 2:
+        return jsonify({"status": "success", "data": []})
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, nom_produit, prix, image_url
+        FROM produits
+        WHERE statut = 'valide' AND nom_produit LIKE %s
+        LIMIT 10
+    """, (f"%{q}%",))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "data": produits})
 
 @app.route('/recherche', methods=['GET'])
 def rechercher_produits():
@@ -503,7 +631,7 @@ def boutique_vendeur(id_vendeur):
         conn.close()
         return jsonify({"message": "Boutique introuvable"}), 404
     cur.execute("""
-        SELECT id, nom_produit, description_produit, prix, vues, clic_whatsapp, image_url
+        SELECT id, nom_produit, description_produit, prix, vues, clic_whatsapp, image_url, promotion
         FROM produits WHERE id_vendeur = %s AND statut = 'valide'
     """, (id_vendeur,))
     produits = cur.fetchall()
@@ -534,10 +662,18 @@ def ajouter_produit():
         return jsonify({"status": "error", "message": "❌ Vous avez déjà un produit avec ce nom."}), 400
     try:
         cur.execute("""
-            INSERT INTO produits (nom_produit, description_produit, prix, categorie, genre, image_url, id_vendeur)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (data['nom_produit'], data.get('description_produit', ''), data['prix'], data['categorie'],
-              data.get('genre', 'unisexe'), data.get('image_url', ''), id_vendeur))
+            INSERT INTO produits (nom_produit, description_produit, prix, promotion, categorie, genre, image_url, id_vendeur)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['nom_produit'],
+            data.get('description_produit', ''),
+            data['prix'],
+            data.get('promotion', 0),
+            data['categorie'],
+            data.get('genre', 'unisexe'),
+            data.get('image_url', ''),
+            id_vendeur
+        ))
         conn.commit()
         produit_id = cur.lastrowid
         log_action("ajout_produit", f"Produit: {data['nom_produit']}", request.remote_addr)
@@ -569,10 +705,23 @@ def modifier_produit(id):
         return jsonify({"status": "error", "message": "Accès refusé"}), 403
     try:
         cur.execute("""
-            UPDATE produits SET nom_produit=%s, description_produit=%s, prix=%s, categorie=%s, image_url=%s
+            UPDATE produits SET 
+                nom_produit=%s, 
+                description_produit=%s, 
+                prix=%s, 
+                promotion=%s,
+                categorie=%s, 
+                image_url=%s
             WHERE id=%s
-        """, (data.get('nom_produit'), data.get('description_produit'), data.get('prix'),
-              data.get('categorie'), data.get('image_url'), id))
+        """, (
+            data.get('nom_produit'),
+            data.get('description_produit'),
+            data.get('prix'),
+            data.get('promotion', 0),
+            data.get('categorie'),
+            data.get('image_url'),
+            id
+        ))
         conn.commit()
         log_action("modification_produit", f"Produit ID: {id}", request.remote_addr)
         cur.close()
@@ -605,6 +754,116 @@ def supprimer_produit(id):
         return jsonify({"status": "success", "message": "Produit supprimé"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+# ==========================================
+# AVIS
+# ==========================================
+@app.route('/produits/<int:id>/avis', methods=['GET'])
+def get_avis(id):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT * FROM avis WHERE produit_id = %s ORDER BY date_creation DESC
+    """, (id,))
+    avis = cur.fetchall()
+    
+    cur.execute("""
+        SELECT AVG(note) as moyenne, COUNT(*) as total FROM avis WHERE produit_id = %s
+    """, (id,))
+    stats = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    return jsonify({
+        "status": "success",
+        "data": avis,
+        "moyenne": stats['moyenne'] if stats['moyenne'] else 0,
+        "total": stats['total'] or 0
+    })
+
+@app.route('/produits/<int:id>/avis', methods=['POST'])
+def ajouter_avis(id):
+    data = request.get_json()
+    client_nom = data.get('client_nom', 'Anonyme')
+    note = data.get('note', 5)
+    commentaire = data.get('commentaire', '')
+    
+    if note < 1 or note > 5:
+        return jsonify({"status": "error", "message": "La note doit être entre 1 et 5"}), 400
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM produits WHERE id = %s", (id,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Produit introuvable"}), 404
+    
+    cur.execute("""
+        INSERT INTO avis (produit_id, client_nom, note, commentaire)
+        VALUES (%s, %s, %s, %s)
+    """, (id, client_nom, note, commentaire))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "message": "Avis ajouté"}), 201
+
+# ==========================================
+# FAVORIS
+# ==========================================
+@app.route('/favoris', methods=['POST'])
+def ajouter_favori():
+    data = request.get_json()
+    produit_id = data.get('produit_id')
+    client_email = data.get('client_email')
+    
+    if not produit_id or not client_email:
+        return jsonify({"status": "error", "message": "Produit et email requis"}), 400
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO favoris (produit_id, client_email)
+            VALUES (%s, %s)
+        """, (produit_id, client_email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Ajouté aux favoris"}), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Déjà dans les favoris"}), 400
+
+@app.route('/favoris', methods=['DELETE'])
+def supprimer_favori():
+    data = request.get_json()
+    produit_id = data.get('produit_id')
+    client_email = data.get('client_email')
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM favoris WHERE produit_id = %s AND client_email = %s", (produit_id, client_email))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "message": "Retiré des favoris"}), 200
+
+@app.route('/favoris/<email>', methods=['GET'])
+def get_favoris(email):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT p.* FROM produits p
+        JOIN favoris f ON p.id = f.produit_id
+        WHERE f.client_email = %s AND p.statut = 'valide'
+    """, (email,))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "data": produits})
 
 # ==========================================
 # UPLOAD IMAGES (local pour Render)
@@ -677,7 +936,7 @@ def me_dashboard():
     cur.execute("SELECT * FROM vendeurs WHERE id = %s", (id_vendeur,))
     vendeur = cur.fetchone()
     cur.execute("""
-        SELECT id, nom_produit, prix, categorie, vues, clic_whatsapp, date_creation, image_url, statut, motif_refus
+        SELECT id, nom_produit, prix, promotion, categorie, vues, clic_whatsapp, date_creation, image_url, statut, motif_refus
         FROM produits WHERE id_vendeur = %s ORDER BY date_creation DESC
     """, (id_vendeur,))
     produits = cur.fetchall()
@@ -851,7 +1110,7 @@ def admin_valider_produit(id):
     motif = data.get('motif', '')
     if statut not in ['valide', 'refuse']:
         return jsonify({"status": "error", "message": "Statut invalide"}), 400
-    conn = obtenir_connexion()
+    conn = obtener_connexion()
     cur = conn.cursor()
     cur.execute("SELECT nom_produit, id_vendeur FROM produits WHERE id = %s", (id,))
     produit = cur.fetchone()
@@ -998,8 +1257,42 @@ def admin_notification_lu(id):
     return jsonify({"status": "success", "message": "Notification marquée comme lue"})
 
 # ==========================================
+# ADMIN - SIGNALEMENTS
+# ==========================================
+@app.route('/admin/signalements', methods=['GET'])
+def admin_signalements():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT s.*, p.nom_produit
+        FROM signalements s
+        JOIN produits p ON s.produit_id = p.id
+        WHERE s.statut = 'en_attente'
+        ORDER BY s.date_creation DESC
+    """)
+    signalements = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": signalements})
+
+@app.route('/admin/signalements/<int:id>/traiter', methods=['PUT'])
+@require_csrf
+def admin_traiter_signalement(id):
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("UPDATE signalements SET statut = 'traite' WHERE id = %s", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Signalement traité"})
+
+# ==========================================
 # LANCEMENT
 # ==========================================
 if __name__ == "__main__":
     os.makedirs('uploads', exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5000)  # <-- Passe debug à True
+    app.run(debug=False, host='0.0.0.0', port=5000)

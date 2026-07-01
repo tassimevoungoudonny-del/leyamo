@@ -233,7 +233,9 @@ async function validerProduit(id, statut) {
 // ---------- SIGNALEMENTS ----------
 async function chargerSignalements() {
     try {
-        const reponse = await fetch(`${API}/admin/signalements`, { headers: { "Authorization": token } });
+        const reponse = await fetch(`${API}/admin/signalements`, {
+            headers: { "Authorization": token }
+        });
         const data = await reponse.json();
         afficherSignalements(data.data);
     } catch (e) {}
@@ -362,6 +364,7 @@ function afficherPaginationLogs(pagination) {
     }
 }
 
+// ---------- ONGLETS ----------
 document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", function() {
@@ -371,17 +374,26 @@ document.addEventListener("DOMContentLoaded", function() {
             });
             this.style.background = "#0f766e";
             this.style.color = "white";
+
             const tab = this.dataset.tab;
+
+            // Affichage/masquage des sections
             document.getElementById("liste-vendeurs").style.display = tab === 'vendeurs' ? 'block' : 'none';
             document.getElementById("liste-produits").style.display = tab === 'produits' ? 'block' : 'none';
             document.getElementById("liste-signalements").style.display = tab === 'signalements' ? 'block' : 'none';
             document.getElementById("publier-produit").style.display = tab === 'publier' ? 'block' : 'none';
             document.getElementById("logs").style.display = tab === 'logs' ? 'block' : 'none';
+
+            // Recharger les données à chaque clic
+            if (tab === 'vendeurs') chargerVendeurs();
+            if (tab === 'produits') chargerProduits(filtreActuel);
+            if (tab === 'signalements') chargerSignalements();
             if (tab === 'publier') chargerProduitsPourPublication();
             if (tab === 'logs') chargerLogs(1);
-            if (tab === 'signalements') chargerSignalements();
         });
     });
+
+    // Filtres admin
     document.querySelectorAll(".filtre-admin").forEach(btn => {
         btn.addEventListener("click", function() {
             document.querySelectorAll(".filtre-admin").forEach(b => {
@@ -395,6 +407,8 @@ document.addEventListener("DOMContentLoaded", function() {
             chargerProduits(this.dataset.filtre);
         });
     });
+
+    // État initial
     document.getElementById("liste-produits").style.display = 'none';
     document.getElementById("liste-signalements").style.display = 'none';
     document.getElementById("publier-produit").style.display = 'none';

@@ -4,10 +4,27 @@
 <body>
 <div class="fiche-produit">
     <div id="galerie"><img id="image-principale" src=""><div id="miniatures"></div></div>
-    <h1 id="nom"></h1><p id="prix"></p><p id="categorie"></p><p id="description"></p>
-    <p id="localisation">📍 <span id="lieu">Non renseigné</span></p><p id="vues">👁 0 vues</p>
-    <h3 id="boutique"></h3><button id="btn-whatsapp">Commander sur WhatsApp</button>
+    <h1 id="nom"></h1>
+    <div id="prix"></div>
+    <p id="categorie"></p>
+    <p id="description"></p>
+    <p id="localisation">📍 <span id="lieu">Non renseigné</span></p>
+    <p id="vues">👁 0 vues</p>
+    <h3 id="boutique">
+        🏪 <span id="nom-boutique"></span>
+        <a id="lien-boutique" href="#" target="_blank" style="font-size:14px; color:#0f766e; text-decoration:underline; margin-left:10px;">Voir la boutique</a>
+    </h3>
+    <!-- Partage social -->
+    <div class="share-buttons">
+        <button class="share-whatsapp" onclick="partagerWhatsApp()">📱 WhatsApp</button>
+        <button class="share-facebook" onclick="partagerFacebook()">📘 Facebook</button>
+        <button class="share-copy" onclick="copierLien()">📋 Copier le lien</button>
+    </div>
+    <button id="btn-whatsapp">Commander sur WhatsApp</button>
+    <!-- Avis -->
+    <div id="avis-section" class="avis-section"></div>
 </div>
-<script src="produit.js"></script><script src="notifications.js"></script>
+<script src="produit.js"></script>
+<script src="notifications.js"></script>
 </body>
 </html>

@@ -1,34 +1,96 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Leyamo Store</title><link rel="stylesheet" href="style.css"></head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leyamo Store</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 <body>
-<header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Store</span></h2></div><nav><a href="index.html">Accueil</a><a href="connexion.html">Connexion</a><a href="inscription.html">Inscription</a></nav></header>
+<header>
+    <div class="logo-zone">
+        <img src="logo.webp" alt="Leyamo" class="logo">
+        <h2>Leyamo <span>Store</span></h2>
+    </div>
+    <nav>
+        <a href="index.html">Accueil</a>
+        <a href="connexion.html">Connexion</a>
+        <a href="inscription.html">Inscription</a>
+        <button onclick="toggleDarkMode()" class="btn-darkmode" title="Mode sombre">🌙</button>
+    </nav>
+</header>
 <section class="hero">
     <h1>Trouvez les meilleurs produits près de chez vous</h1>
-   <div class="search-box">
-      <div class="search-input-wrapper">
-         <input type="text" id="recherche" placeholder="Rechercher un produit...">
-         <button onclick="rechercherProduit(1)" class="search-btn" aria-label="Rechercher">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-        </button>
-         <button onclick="reinitialiserRecherche()" id="clear-search" class="clear-btn" style="display:none;" aria-label="Effacer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-         </button>
-       </div>
+    <div class="search-box">
+        <div class="search-input-wrapper">
+            <input type="text" id="recherche" placeholder="Rechercher un produit...">
+            <button onclick="rechercherProduit(1)" class="search-btn" aria-label="Rechercher">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+            </button>
+            <button onclick="reinitialiserRecherche()" id="clear-search" class="clear-btn" style="display:none;" aria-label="Effacer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div id="autocomplete-list" class="autocomplete-list"></div>
     </div>
     <div class="filtre-container">
-        <div class="groupe-filtres"><span>Catégorie :</span><button class="filtre-btn active" data-categorie="all">Tous</button><button class="filtre-btn" data-categorie="Vêtements">👕 Vêtements</button><button class="filtre-btn" data-categorie="Chaussures">👟 Chaussures</button><button class="filtre-btn" data-categorie="Maillot">🏊 Maillot</button></div>
-        <div class="groupe-filtres"><span>Genre :</span><button class="filtre-genre active" data-genre="all">Tous</button><button class="filtre-genre" data-genre="masculin">👨 Masculin</button><button class="filtre-genre" data-genre="feminin">👩 Féminin</button></div>
+        <div class="groupe-filtres">
+            <span>Catégorie :</span>
+            <button class="filtre-btn active" data-categorie="all">Tous</button>
+            <button class="filtre-btn" data-categorie="Vêtements">👕 Vêtements</button>
+            <button class="filtre-btn" data-categorie="Chaussures">👟 Chaussures</button>
+            <button class="filtre-btn" data-categorie="Maillot">🏊 Maillot</button>
+        </div>
+        <div class="groupe-filtres">
+            <span>Genre :</span>
+            <button class="filtre-genre active" data-genre="all">Tous</button>
+            <button class="filtre-genre" data-genre="masculin">👨 Masculin</button>
+            <button class="filtre-genre" data-genre="feminin">👩 Féminin</button>
+        </div>
+        <div class="filtre-prix">
+            <span>💰 Prix :</span>
+            <input type="range" id="prix-min" min="0" max="100000" value="0" step="1000">
+            <span class="prix-values">
+                <span id="prix-min-label">0</span> - <span id="prix-max-label">100 000</span> FCFA
+            </span>
+            <input type="range" id="prix-max" min="0" max="100000" value="100000" step="1000">
+        </div>
     </div>
 </section>
-<section class="produits-section"><h2>Produits disponibles</h2><div id="liste-produits" class="grille-produits"></div><div id="pagination"></div></section>
-<footer>© 2026 <span>Leyamo</span> Store</footer>
-<script src="app.js"></script><script src="notifications.js"></script>
+<section class="produits-section">
+    <div class="header-produits">
+        <h2>Produits disponibles</h2>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <select id="limit-select" style="padding:6px 12px; border-radius:50px; border:2px solid #e2e8f0; background:white; font-size:13px;">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30" selected>30</option>
+                <option value="50">50</option>
+            </select>
+            <div class="view-toggle">
+                <button id="view-grid" class="active" title="Grille">▦</button>
+                <button id="view-list" title="Liste">☰</button>
+            </div>
+        </div>
+    </div>
+    <div id="liste-produits" class="grille-produits"></div>
+    <div id="pagination"></div>
+</section>
+<footer>
+    <p>© 2026 <span>Leyamo</span> Store</p>
+    <p style="margin-top: 8px; font-size: 13px;">
+        <a href="a-propos.html" style="color: #a7f3d0; text-decoration: underline;">À propos</a>
+        &nbsp;|&nbsp;
+        <a href="mailto:contact@leyamo.com" style="color: #a7f3d0; text-decoration: underline;">Contact</a>
+    </p>
+</footer>
+<script src="app.js"></script>
+<script src="notifications.js"></script>
 </body>
 </html>

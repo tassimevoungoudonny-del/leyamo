@@ -28,6 +28,16 @@ async function chargerDashboard() {
 function afficherDashboard(data) {
     document.getElementById("nom-vendeur").innerHTML = data.vendeur.nom;
     document.getElementById("nom-boutique").innerHTML = data.vendeur.nom_boutique;
+
+    // Lien vers la boutique
+    const lienBoutique = document.getElementById("lien-ma-boutique");
+    if (data.vendeur && data.vendeur.id) {
+        lienBoutique.href = `boutique.html?id=${data.vendeur.id}`;
+        lienBoutique.style.display = "inline-block";
+    } else {
+        lienBoutique.style.display = "none";
+    }
+
     document.getElementById("nb-produits").innerHTML = data.statistiques.total_produits || 0;
     document.getElementById("nb-vues").innerHTML = data.statistiques.total_vues || 0;
     document.getElementById("nb-clics").innerHTML = data.statistiques.total_clics || 0;

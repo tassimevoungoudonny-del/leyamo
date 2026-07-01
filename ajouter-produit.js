@@ -14,7 +14,7 @@ function afficherLoader(actif) {
     overlay.className = `loader-overlay${actif ? ' active' : ''}`;
 }
 
-// ============ PRÉVISUALISATION DES IMAGES ============
+// ============ PRÉVISUALISATION ============
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("images_produit").addEventListener("change", function() {
         const preview = document.getElementById("preview-images");
@@ -74,7 +74,15 @@ async function ajouterProduit() {
                 "Authorization": token,
                 "X-CSRF-Token": csrf_token
             },
-            body: JSON.stringify({ nom_produit, description_produit, prix, categorie, genre, image_url: "" })
+            body: JSON.stringify({
+                nom_produit,
+                description_produit,
+                prix,
+                categorie,
+                genre,
+                image_url: "",
+                promotion: 0  // ✅ Ajout de promotion (même si pas utilisé)
+            })
         });
 
         const dataProduit = await reponseProduit.json();
@@ -93,7 +101,10 @@ async function ajouterProduit() {
             }
             const reponseImages = await fetch(`${API}/upload/${produitId}`, {
                 method: "POST",
-                headers: { "Authorization": token, "X-CSRF-Token": csrf_token },
+                headers: {
+                    "Authorization": token,
+                    "X-CSRF-Token": csrf_token
+                },
                 body: formData
             });
             if (reponseImages.status === 201) {
@@ -106,6 +117,7 @@ async function ajouterProduit() {
             afficherNotification("✅ Produit ajouté !", "success");
         }
 
+        // Réinitialiser le formulaire
         document.getElementById("nom_produit").value = "";
         document.getElementById("description_produit").value = "";
         document.getElementById("prix").value = "";

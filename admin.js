@@ -108,34 +108,58 @@ function afficherVendeurs(vendeurs) {
 }
 
 async function validerVendeur(id, statut) {
-    if (!confirm("Valider ce vendeur ?")) return;
+    const ok = await confirmerAction(
+        "✅ Validation du vendeur",
+        "Voulez-vous vraiment valider ce vendeur ? Il pourra se connecter et vendre sur Leyamo."
+    );
+    if (!ok) return;
+
     try {
         const reponse = await fetch(`${API}/admin/vendeurs/${id}/valider`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json", "Authorization": token, "X-CSRF-Token": csrf_token },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            },
             body: JSON.stringify({ statut })
         });
         const data = await reponse.json();
         afficherNotification(data.message, "success");
         chargerVendeurs();
         chargerStats();
-    } catch (e) { afficherNotification("Erreur", "error"); }
+    } catch (e) {
+        afficherNotification("Erreur", "error");
+    }
 }
 
 async function refuserVendeur(id) {
     const motif = prompt("Motif du refus :");
     if (motif === null) return;
+    
+    const ok = await confirmerAction(
+        "❌ Refus du vendeur",
+        `Voulez-vous vraiment refuser ce vendeur ? Motif : "${motif}"`
+    );
+    if (!ok) return;
+
     try {
         const reponse = await fetch(`${API}/admin/vendeurs/${id}/valider`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json", "Authorization": token, "X-CSRF-Token": csrf_token },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            },
             body: JSON.stringify({ statut: 'refuse', motif })
         });
         const data = await reponse.json();
         afficherNotification(data.message, "success");
         chargerVendeurs();
         chargerStats();
-    } catch (e) { afficherNotification("Erreur", "error"); }
+    } catch (e) {
+        afficherNotification("Erreur", "error");
+    }
 }
 
 // ---------- PRODUITS ----------
@@ -215,19 +239,35 @@ function afficherPaginationAdmin(pagination) {
 }
 
 async function validerProduit(id, statut) {
+    const action = statut === 'valide' ? 'valider' : 'refuser';
+    const titre = statut === 'valide' ? "✅ Validation du produit" : "❌ Refus du produit";
+    const message = statut === 'valide' 
+        ? "Voulez-vous vraiment valider ce produit ? Il sera visible sur le site." 
+        : "Voulez-vous vraiment refuser ce produit ?";
+
+    const ok = await confirmerAction(titre, message);
+    if (!ok) return;
+
     const motif = statut === 'refuse' ? prompt("Motif du refus :") : '';
     if (statut === 'refuse' && motif === null) return;
+
     try {
         const reponse = await fetch(`${API}/admin/produits/${id}/valider`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json", "Authorization": token, "X-CSRF-Token": csrf_token },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            },
             body: JSON.stringify({ statut, motif })
         });
         const data = await reponse.json();
         afficherNotification(data.message, "success");
         chargerProduits(filtreActuel);
         chargerStats();
-    } catch (e) { afficherNotification("Erreur", "error"); }
+    } catch (e) {
+        afficherNotification("Erreur", "error");
+    }
 }
 
 // ---------- SIGNALEMENTS ----------

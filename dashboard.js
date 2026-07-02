@@ -127,15 +127,27 @@ function deconnexion() {
 function modifierProduit(id) { window.location.href = `modifier-produit.html?id=${id}`; }
 
 async function supprimerProduit(id) {
-    if (!confirm("⚠️ Supprimer ce produit ?")) return;
+    const ok = await confirmerAction(
+        "⚠️ Suppression du produit",
+        "Voulez-vous vraiment supprimer ce produit ? Cette action est irréversible."
+    );
+    
+    if (!ok) return;
+
     const token = localStorage.getItem("token");
     const csrf_token = localStorage.getItem("csrf_token");
+
     try {
         const reponse = await fetch(`${API}/produits/${id}`, {
             method: "DELETE",
-            headers: { "Authorization": token, "X-CSRF-Token": csrf_token }
+            headers: {
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            }
         });
+
         const data = await reponse.json();
+
         if (reponse.status === 200) {
             afficherNotification("✅ " + data.message, "success");
             chargerDashboard();
@@ -146,17 +158,28 @@ async function supprimerProduit(id) {
         afficherNotification("Erreur lors de la suppression", "error");
     }
 }
-
 async function supprimerCompte() {
-    if (!confirm("⚠️ Voulez-vous vraiment supprimer votre compte ? Tous vos produits seront supprimés.")) return;
+    const ok = await confirmerAction(
+        "⚠️ Suppression du compte",
+        "Voulez-vous vraiment supprimer votre compte ? Tous vos produits seront supprimés définitivement."
+    );
+    
+    if (!ok) return;
+
     const token = localStorage.getItem("token");
     const csrf_token = localStorage.getItem("csrf_token");
+
     try {
         const reponse = await fetch(`${API}/vendeurs/me/supprimer`, {
             method: "DELETE",
-            headers: { "Authorization": token, "X-CSRF-Token": csrf_token }
+            headers: {
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            }
         });
+
         const data = await reponse.json();
+
         if (reponse.status === 200) {
             afficherNotification("✅ " + data.message, "success");
             localStorage.clear();

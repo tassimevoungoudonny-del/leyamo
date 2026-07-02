@@ -1,6 +1,6 @@
 // ============================================
 // MODALE DE CONFIRMATION PERSONNALISÉE
-// ===========================================
+// ============================================
 
 function afficherConfirmation(titre, message, callback) {
     // Créer l'overlay
@@ -84,7 +84,7 @@ function afficherConfirmation(titre, message, callback) {
         }
     });
 
-    // Animations CSS
+    // Animations CSS (ajoutées dynamiquement)
     const style = document.createElement("style");
     style.textContent = `
         @keyframes fadeIn {
@@ -99,6 +99,9 @@ function afficherConfirmation(titre, message, callback) {
     document.head.appendChild(style);
 }
 
+// ============================================
+// VERSION SIMPLIFIÉE POUR LES CONFIRMATIONS
+// ============================================
 function confirmerAction(titre, message) {
     return new Promise((resolve) => {
         afficherConfirmation(titre, message, (resultat) => {
@@ -107,7 +110,6 @@ function confirmerAction(titre, message) {
     });
 }
 
-// Version simple avec callback (pour les anciennes méthodes)
-function confirmer(titre, message, callback) {
-    afficherConfirmation(titre, message, callback);
-}
+// Exemple d'utilisation :
+// const ok = await confirmerAction("⚠️ Suppression", "Voulez-vous vraiment supprimer ce produit ?");
+// if (ok) { ... }

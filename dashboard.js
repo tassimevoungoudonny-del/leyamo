@@ -1,31 +1,47 @@
 const API = "";
 
+// ============================================
+// CHARGEMENT DU DASHBOARD
+// ============================================
 chargerDashboard();
 
 async function chargerDashboard() {
     const token = localStorage.getItem("token");
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
-        setTimeout(() => { window.location.href = "connexion.html"; }, 1500);
+        setTimeout(() => {
+            window.location.href = "connexion.html";
+        }, 1500);
         return;
     }
+
     try {
         const reponse = await fetch(`${API}/vendeurs/me/dashboard`, {
             headers: { "Authorization": token }
         });
+
         if (reponse.status === 401) {
             localStorage.removeItem("token");
-            setTimeout(() => { window.location.href = "connexion.html"; }, 1500);
+            afficherNotification("Session expirée", "error");
+            setTimeout(() => {
+                window.location.href = "connexion.html";
+            }, 1500);
             return;
         }
+
         const data = await reponse.json();
         afficherDashboard(data);
     } catch (erreur) {
+        console.error(erreur);
         afficherNotification("Erreur de chargement", "error");
     }
 }
 
+// ============================================
+// AFFICHAGE DU DASHBOARD
+// ============================================
 function afficherDashboard(data) {
+    // Infos vendeur
     document.getElementById("nom-vendeur").innerHTML = data.vendeur.nom;
     document.getElementById("nom-boutique").innerHTML = data.vendeur.nom_boutique;
 
@@ -38,19 +54,28 @@ function afficherDashboard(data) {
         lienBoutique.style.display = "none";
     }
 
+    // Statistiques
     document.getElementById("nb-produits").innerHTML = data.statistiques.total_produits || 0;
     document.getElementById("nb-vues").innerHTML = data.statistiques.total_vues || 0;
     document.getElementById("nb-clics").innerHTML = data.statistiques.total_clics || 0;
 
+    // Séparation des produits
     const valides = data.produits.filter(p => p.statut !== 'refuse');
     const refuses = data.produits.filter(p => p.statut === 'refuse');
+
     afficherValides(valides);
     afficherRefuses(refuses);
 
+    // Gestion des onglets
     document.querySelectorAll(".tab-produit").forEach(btn => {
         btn.addEventListener("click", function() {
-            document.querySelectorAll(".tab-produit").forEach(b => { b.style.background = "#e2e8f0"; b.style.color = "#1e293b"; });
-            this.style.background = "#0f766e"; this.style.color = "white";
+            document.querySelectorAll(".tab-produit").forEach(b => {
+                b.style.background = "#e2e8f0";
+                b.style.color = "#1e293b";
+            });
+            this.style.background = "#0f766e";
+            this.style.color = "white";
+
             const tab = this.dataset.tab;
             document.getElementById("mes-produits").style.display = tab === 'valides' ? 'block' : 'none';
             document.getElementById("mes-produits-refuses").style.display = tab === 'refuses' ? 'block' : 'none';
@@ -58,80 +83,119 @@ function afficherDashboard(data) {
     });
 }
 
+// ============================================
+// AFFICHAGE PRODUITS VALIDÉS
+// ============================================
 function afficherValides(produits) {
     const zone = document.getElementById("mes-produits");
     zone.innerHTML = "";
+
     if (!produits || produits.length === 0) {
-        zone.innerHTML = `<div style="text-align:center;padding:40px;background:white;border-radius:12px;color:#64748b;"><p>📦 Aucun produit</p><a href="ajouter-produit.html" style="color:#0f766e;text-decoration:none;font-weight:600;">Ajouter un produit</a></div>`;
+        zone.innerHTML = `
+            <div style="text-align:center; padding:40px; background:white; border-radius:12px; color:#64748b;">
+                <p style="font-size:18px;">📦 Aucun produit pour le moment</p>
+                <a href="ajouter-produit.html" style="color:#0f766e; text-decoration:none; font-weight:600;">Ajouter votre premier produit</a>
+            </div>
+        `;
         return;
     }
+
     produits.forEach(p => {
         const image = p.image_url || "https://via.placeholder.com/100x100";
-        const dateFr = new Date(p.date_creation).toLocaleDateString('fr-FR');
+        const dateFr = new Date(p.date_creation).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
+        // Gestion promotion
+        let prixHtml = `<span class="prix">${new Intl.NumberFormat('fr-FR').format(p.prix)} FCFA</span>`;
+        if (p.promotion && p.promotion > 0) {
+            const prixOriginal = new Intl.NumberFormat('fr-FR').format(p.prix);
+            const prixPromo = new Intl.NumberFormat('fr-FR').format(p.prix * (1 - p.promotion / 100));
+            prixHtml = `
+                <span style="text-decoration:line-through; color:#94a3b8; font-size:13px; margin-right:8px;">${prixOriginal} FCFA</span>
+                <span class="prix">${prixPromo} FCFA</span>
+                <span style="background:#dc2626; color:white; padding:2px 8px; border-radius:50px; font-size:11px; margin-left:6px;">-${p.promotion}%</span>
+            `;
+        }
+
         zone.innerHTML += `
             <div class="produit-dashboard">
-                <div style="display:flex;align-items:center;gap:16px;flex:1;flex-wrap:wrap;">
-                    <img src="${image}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;">
-                    <div style="flex:2;min-width:140px;">
-                        <h3 style="font-size:16px;margin:0;color:#064e3b;">${p.nom_produit}</h3>
-                        <p style="color:#0f766e;font-weight:600;margin:4px 0;">${p.prix} FCFA</p>
-                        <span style="background:#fef3c7;color:#d97706;padding:2px 10px;border-radius:50px;font-size:12px;">${p.categorie}</span>
+                <div style="display:flex; align-items:center; gap:16px; flex:1; flex-wrap:wrap;">
+                    <img src="${image}" alt="${p.nom_produit}" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">
+                    <div style="flex:2; min-width:140px;">
+                        <h3 style="font-size:16px; margin:0; color:#064e3b;">${p.nom_produit}</h3>
+                        <div style="margin:4px 0;">${prixHtml}</div>
+                        <span style="display:inline-block; background:#fef3c7; color:#d97706; padding:2px 10px; border-radius:50px; font-size:12px;">${p.categorie || 'Non catégorisé'}</span>
                     </div>
-                    <div style="text-align:center;min-width:80px;"><p style="font-size:14px;margin:0;">👁 ${p.vues || 0}</p><p style="font-size:14px;margin:0;">💬 ${p.clic_whatsapp || 0}</p></div>
-                    <div style="text-align:center;font-size:12px;color:#64748b;min-width:100px;"><p>📅 ${dateFr}</p></div>
+                    <div style="text-align:center; min-width:80px;">
+                        <p style="font-size:14px; margin:0;">👁 ${p.vues || 0}</p>
+                        <p style="font-size:14px; margin:0;">💬 ${p.clic_whatsapp || 0}</p>
+                    </div>
+                    <div style="text-align:center; font-size:12px; color:#64748b; min-width:100px;">
+                        <p style="margin:0;">📅 ${dateFr}</p>
+                    </div>
                 </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <a href="produit.html?id=${p.id}" target="_blank" style="background:#0f766e;color:white;text-decoration:none;padding:6px 16px;border-radius:50px;font-size:13px;font-weight:600;">Voir plus</a>
-                    <button onclick="modifierProduit(${p.id})" style="background:#2563eb;color:white;border:none;padding:6px 14px;border-radius:50px;cursor:pointer;">Modifier</button>
-                    <button onclick="supprimerProduit(${p.id})" style="background:#dc2626;color:white;border:none;padding:6px 14px;border-radius:50px;cursor:pointer;">Supprimer</button>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <a href="produit.html?id=${p.id}" target="_blank" style="background:#0f766e; color:white; text-decoration:none; padding:6px 16px; border-radius:50px; font-size:13px; font-weight:600;">Voir plus</a>
+                    <button onclick="modifierProduit(${p.id})" style="background:#2563eb; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer;">Modifier</button>
+                    <button onclick="supprimerProduit(${p.id})" style="background:#dc2626; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer;">Supprimer</button>
                 </div>
             </div>
         `;
     });
 }
 
+// ============================================
+// AFFICHAGE PRODUITS REFUSÉS
+// ============================================
 function afficherRefuses(produits) {
     const zone = document.getElementById("mes-produits-refuses");
     zone.innerHTML = "";
+
     if (!produits || produits.length === 0) {
-        zone.innerHTML = `<div style="text-align:center;padding:40px;background:white;border-radius:12px;color:#64748b;"><p>✅ Aucun produit refusé</p></div>`;
+        zone.innerHTML = `
+            <div style="text-align:center; padding:40px; background:white; border-radius:12px; color:#64748b;">
+                <p>✅ Aucun produit refusé</p>
+            </div>
+        `;
         return;
     }
+
     produits.forEach(p => {
+        const motif = p.motif_refus || "Aucun motif fourni";
         zone.innerHTML += `
             <div class="produit-dashboard refuse">
-                <div style="display:flex;align-items:center;gap:16px;flex:1;flex-wrap:wrap;">
-                    <img src="${p.image_url || 'https://via.placeholder.com/100x100'}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;">
-                    <div style="flex:2;min-width:140px;">
-                        <h3 style="font-size:16px;margin:0;color:#064e3b;">${p.nom_produit}</h3>
-                        <p style="color:#dc2626;font-weight:600;margin:4px 0;">❌ Refusé</p>
-                        <p style="font-size:13px;color:#64748b;">Motif : ${p.motif_refus || 'Aucun motif'}</p>
+                <div style="display:flex; align-items:center; gap:16px; flex:1; flex-wrap:wrap;">
+                    <img src="${p.image_url || 'https://via.placeholder.com/100x100'}" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">
+                    <div style="flex:2; min-width:140px;">
+                        <h3 style="font-size:16px; margin:0; color:#064e3b;">${p.nom_produit}</h3>
+                        <p style="color:#dc2626; font-weight:600; margin:4px 0;">❌ Refusé</p>
+                        <p style="font-size:13px; color:#64748b;">Motif : ${motif}</p>
                     </div>
                 </div>
-                <div style="display:flex;gap:8px;">
-                    <button onclick="modifierProduit(${p.id})" style="background:#2563eb;color:white;border:none;padding:6px 14px;border-radius:50px;cursor:pointer;">Modifier</button>
-                    <button onclick="supprimerProduit(${p.id})" style="background:#dc2626;color:white;border:none;padding:6px 14px;border-radius:50px;cursor:pointer;">Supprimer</button>
+                <div style="display:flex; gap:8px;">
+                    <button onclick="modifierProduit(${p.id})" style="background:#2563eb; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer;">Modifier</button>
+                    <button onclick="supprimerProduit(${p.id})" style="background:#dc2626; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer;">Supprimer</button>
                 </div>
             </div>
         `;
     });
 }
 
-function deconnexion() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("csrf_token");
-    afficherNotification("Déconnexion réussie", "success");
-    setTimeout(() => { window.location.href = "connexion.html"; }, 300);
+// ============================================
+// ACTIONS
+// ============================================
+function modifierProduit(id) {
+    window.location.href = `modifier-produit.html?id=${id}`;
 }
-
-function modifierProduit(id) { window.location.href = `modifier-produit.html?id=${id}`; }
 
 async function supprimerProduit(id) {
     const ok = await confirmerAction(
         "⚠️ Suppression du produit",
         "Voulez-vous vraiment supprimer ce produit ? Cette action est irréversible."
     );
-    
     if (!ok) return;
 
     const token = localStorage.getItem("token");
@@ -155,15 +219,16 @@ async function supprimerProduit(id) {
             afficherNotification("❌ " + data.message, "error");
         }
     } catch (erreur) {
+        console.error(erreur);
         afficherNotification("Erreur lors de la suppression", "error");
     }
 }
+
 async function supprimerCompte() {
     const ok = await confirmerAction(
         "⚠️ Suppression du compte",
         "Voulez-vous vraiment supprimer votre compte ? Tous vos produits seront supprimés définitivement."
     );
-    
     if (!ok) return;
 
     const token = localStorage.getItem("token");
@@ -188,11 +253,24 @@ async function supprimerCompte() {
             afficherNotification("❌ " + data.message, "error");
         }
     } catch (erreur) {
+        console.error(erreur);
         afficherNotification("Erreur lors de la suppression", "error");
     }
 }
 
+function deconnexion() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("csrf_token");
+    afficherNotification("Déconnexion réussie", "success");
+    setTimeout(() => {
+        window.location.href = "connexion.html";
+    }, 300);
+}
+
+// ============================================
+// EXPORT (pour les appels HTML onclick)
+// ============================================
 window.modifierProduit = modifierProduit;
 window.supprimerProduit = supprimerProduit;
-window.deconnexion = deconnexion;
 window.supprimerCompte = supprimerCompte;
+window.deconnexion = deconnexion;

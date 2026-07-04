@@ -1,6 +1,7 @@
 const API = "";
-let categorieActuelle = "all", genreActuel = "all", limit = 30;
-let vueActuelle = 'grid';
+let categorieActuelle = "all";
+let genreActuel = "all";
+let limit = 30;
 let prixMin = 0;
 let prixMax = 100000;
 
@@ -64,8 +65,12 @@ function getUrlParams() {
     const params = new URLSearchParams();
     params.set('page', 1);
     params.set('limit', limit);
-    if (categorieActuelle && categorieActuelle !== 'all') params.set('categorie', categorieActuelle);
-    if (genreActuel && genreActuel !== 'all') params.set('genre', genreActuel);
+    if (categorieActuelle && categorieActuelle !== 'all') {
+        params.set('categorie', categorieActuelle);
+    }
+    if (genreActuel && genreActuel !== 'all') {
+        params.set('genre', genreActuel);
+    }
     if (prixMin > 0) params.set('prix_min', prixMin);
     if (prixMax < 100000) params.set('prix_max', prixMax);
     return params;
@@ -74,13 +79,17 @@ function getUrlParams() {
 async function chargerProduits(page = 1) {
     const params = getUrlParams();
     params.set('page', page);
+    const url = `${API}/produits/filtrer?${params}`;
+    console.log("🔍 Appel API :", url);
     afficherLoader(true);
     try {
-        const reponse = await fetch(`${API}/produits/filtrer?${params}`);
+        const reponse = await fetch(url);
         const data = await reponse.json();
+        console.log("✅ Données reçues :", data);
         afficherProduits(data.data);
         afficherPagination(data.pagination);
     } catch (erreur) {
+        console.error("❌ Erreur :", erreur);
         afficherNotification("Erreur de chargement", "error");
     } finally {
         afficherLoader(false);
@@ -133,6 +142,12 @@ function afficherAutocomplete(resultats) {
     });
 }
 
+document.addEventListener("click", function(e) {
+    if (!e.target.closest(".search-box")) {
+        document.getElementById("autocomplete-list")?.classList.remove("active");
+    }
+});
+
 // ============================================
 // RECHERCHE
 // ============================================
@@ -150,8 +165,7 @@ async function rechercherProduit(page = 1) {
         const data = await reponse.json();
         afficherProduits(data.resultats);
         afficherPagination(data.pagination);
-        const list = document.getElementById("autocomplete-list");
-        if (list) list.classList.remove("active");
+        document.getElementById("autocomplete-list")?.classList.remove("active");
     } catch (erreur) {
         afficherNotification("Erreur lors de la recherche", "error");
     } finally {
@@ -161,13 +175,9 @@ async function rechercherProduit(page = 1) {
 
 function reinitialiserRecherche() {
     const rechercheInput = document.getElementById("recherche");
-    if (rechercheInput) {
-        rechercheInput.value = "";
-    }
-    const clearBtn = document.getElementById("clear-search");
-    if (clearBtn) clearBtn.style.display = "none";
-    const list = document.getElementById("autocomplete-list");
-    if (list) list.classList.remove("active");
+    if (rechercheInput) rechercheInput.value = "";
+    document.getElementById("clear-search")?.style.setProperty('display', 'none');
+    document.getElementById("autocomplete-list")?.classList.remove("active");
     categorieActuelle = "all";
     genreActuel = "all";
     prixMin = 0;
@@ -181,10 +191,8 @@ function reinitialiserRecherche() {
     if (prixMinLabel) prixMinLabel.textContent = "0";
     if (prixMaxLabel) prixMaxLabel.textContent = "100 000";
     document.querySelectorAll(".filtre-btn, .filtre-genre").forEach(b => b.classList.remove("active"));
-    const allCat = document.querySelector(".filtre-btn[data-categorie='all']");
-    if (allCat) allCat.classList.add("active");
-    const allGenre = document.querySelector(".filtre-genre[data-genre='all']");
-    if (allGenre) allGenre.classList.add("active");
+    document.querySelector(".filtre-btn[data-categorie='all']")?.classList.add("active");
+    document.querySelector(".filtre-genre[data-genre='all']")?.classList.add("active");
     appliquerFiltres(1);
     afficherNotification("Tous les produits", "success");
 }
@@ -204,7 +212,7 @@ function afficherPagination(pagination) {
         btn.addEventListener("click", () => rechercherProduit(page - 1));
         container.appendChild(btn);
     }
-    for (let i = Math.max(1,page-2); i <= Math.min(pages,page+2); i++) {
+    for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) {
         const btn = document.createElement("button");
         btn.textContent = i;
         if (i === page) btn.classList.add("active");
@@ -306,38 +314,28 @@ async function quickView(id) {
             `;
             document.body.appendChild(overlay);
         }
-        const qvImage = document.getElementById("qv-image");
-        if (qvImage) qvImage.src = (p.images && p.images.length > 0) ? p.images[0] : DEFAULT_IMAGE;
-        const qvTitre = document.getElementById("qv-titre");
-        if (qvTitre) qvTitre.textContent = p.nom_produit;
-        const qvPrix = document.getElementById("qv-prix");
-        if (qvPrix) {
-            const prixFormate = formaterPrix(p.prix);
-            if (p.promotion && p.promotion > 0) {
-                const prixPromo = formaterPrix(p.prix * (1 - p.promotion / 100));
-                qvPrix.innerHTML = `
-                    <span class="prix-barre">${prixFormate} FCFA</span>
-                    <span class="prix">${prixPromo} FCFA</span>
-                    <span class="badge-promo">-${p.promotion}%</span>
-                `;
-            } else {
-                qvPrix.innerHTML = `${prixFormate} FCFA`;
-            }
+        document.getElementById("qv-image").src = (p.images && p.images.length > 0) ? p.images[0] : DEFAULT_IMAGE;
+        document.getElementById("qv-titre").textContent = p.nom_produit;
+        const prixFormate = formaterPrix(p.prix);
+        if (p.promotion && p.promotion > 0) {
+            const prixPromo = formaterPrix(p.prix * (1 - p.promotion / 100));
+            document.getElementById("qv-prix").innerHTML = `
+                <span class="prix-barre">${prixFormate} FCFA</span>
+                <span class="prix">${prixPromo} FCFA</span>
+                <span class="badge-promo">-${p.promotion}%</span>
+            `;
+        } else {
+            document.getElementById("qv-prix").innerHTML = `${prixFormate} FCFA`;
         }
-        const qvDescription = document.getElementById("qv-description");
-        if (qvDescription) qvDescription.textContent = p.description_produit || "Aucune description";
-        const qvBoutique = document.getElementById("qv-boutique");
-        if (qvBoutique) qvBoutique.innerHTML = `🏪 ${p.nom_boutique || 'Boutique'}`;
+        document.getElementById("qv-description").textContent = p.description_produit || "Aucune description";
+        document.getElementById("qv-boutique").innerHTML = `🏪 ${p.nom_boutique || 'Boutique'}`;
         try {
             const avisRep = await fetch(`${API}/produits/${id}/avis`);
             const avisData = await avisRep.json();
             const etoiles = "⭐".repeat(Math.round(avisData.moyenne || 0)) + "☆".repeat(5 - Math.round(avisData.moyenne || 0));
-            const qvAvis = document.getElementById("qv-avis");
-            if (qvAvis) {
-                qvAvis.innerHTML = `⭐ ${avisData.moyenne ? avisData.moyenne.toFixed(1) : '0'} (${avisData.total || 0} avis) ${etoiles}`;
-            }
+            document.getElementById("qv-avis").innerHTML = `⭐ ${avisData.moyenne ? avisData.moyenne.toFixed(1) : '0'} (${avisData.total || 0} avis) ${etoiles}`;
         } catch(e) {}
-        if (overlay) overlay.classList.add("active");
+        overlay.classList.add("active");
     } catch (erreur) {
         afficherLoader(false);
         afficherNotification("Erreur", "error");
@@ -345,8 +343,7 @@ async function quickView(id) {
 }
 
 function fermerQuickView() {
-    const overlay = document.getElementById("quick-view-overlay");
-    if (overlay) overlay.classList.remove("active");
+    document.getElementById("quick-view-overlay")?.classList.remove("active");
 }
 
 // ============================================
@@ -370,73 +367,68 @@ async function signalerProduit(id, nom) {
 }
 
 // ============================================
-// ÉVÉNEMENTS (initialisation au chargement DOM)
+// INITIALISATION AU CHARGEMENT DU DOM
 // ============================================
 document.addEventListener("DOMContentLoaded", function() {
-    console.log("DOM chargé, initialisation...");
+    console.log("🚀 DOM chargé, initialisation...");
 
     // 1. Mode sombre
     const darkBtn = document.querySelector(".btn-darkmode");
-    if (darkBtn) {
-        if (localStorage.getItem("darkMode") === "true") {
-            document.body.classList.add("dark-mode");
-            darkBtn.textContent = "☀️";
-        }
+    if (darkBtn && localStorage.getItem("darkMode") === "true") {
+        document.body.classList.add("dark-mode");
+        darkBtn.textContent = "☀️";
     }
 
-    // 2. Recherche avec autocomplétion
+    // 2. Recherche
     const rechercheInput = document.getElementById("recherche");
-    const clearBtn = document.getElementById("clear-search");
-    const autocompleteList = document.getElementById("autocomplete-list");
-
     if (rechercheInput) {
         rechercheInput.addEventListener("input", function() {
             const value = this.value.trim();
+            const clearBtn = document.getElementById("clear-search");
             if (clearBtn) clearBtn.style.display = value.length > 0 ? "flex" : "none";
             clearTimeout(autocompleteTimeout);
             if (value.length >= 2) {
                 autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
             } else {
-                if (autocompleteList) autocompleteList.classList.remove("active");
+                document.getElementById("autocomplete-list")?.classList.remove("active");
             }
         });
-
         rechercheInput.addEventListener("keyup", function(e) {
             if (e.key === "Enter") rechercherProduit(1);
         });
     }
 
+    const clearBtn = document.getElementById("clear-search");
     if (clearBtn) {
-        clearBtn.addEventListener("click", function() {
-            reinitialiserRecherche();
-        });
+        clearBtn.addEventListener("click", reinitialiserRecherche);
     }
 
-    // 3. Gestion des clics sur les filtres de catégorie (délégation)
+    // 3. FILTRES - Gestion via délégation
     document.addEventListener("click", function(e) {
-        const btn = e.target.closest(".filtre-btn");
-        if (btn) {
-            console.log("🔵 Clic catégorie :", btn.dataset.categorie);
+        // Catégories
+        const catBtn = e.target.closest(".filtre-btn");
+        if (catBtn) {
+            console.log("🔵 Clic catégorie :", catBtn.dataset.categorie);
             document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            categorieActuelle = btn.dataset.categorie;
+            catBtn.classList.add("active");
+            categorieActuelle = catBtn.dataset.categorie;
+            console.log("🟢 Nouvelle catégorie :", categorieActuelle);
             chargerProduits(1);
         }
-    });
 
-    // 4. Gestion des clics sur les filtres de genre (délégation)
-    document.addEventListener("click", function(e) {
-        const btn = e.target.closest(".filtre-genre");
-        if (btn) {
-            console.log("🔵 Clic genre :", btn.dataset.genre);
+        // Genres
+        const genreBtn = e.target.closest(".filtre-genre");
+        if (genreBtn) {
+            console.log("🔵 Clic genre :", genreBtn.dataset.genre);
             document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            genreActuel = btn.dataset.genre;
+            genreBtn.classList.add("active");
+            genreActuel = genreBtn.dataset.genre;
+            console.log("🟢 Nouveau genre :", genreActuel);
             chargerProduits(1);
         }
     });
 
-    // 5. Gestion des filtres prix
+    // 4. Prix
     const prixMinInput = document.getElementById("prix-min");
     const prixMaxInput = document.getElementById("prix-max");
     const prixMinLabel = document.getElementById("prix-min-label");
@@ -457,7 +449,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // 6. Gestion du select limit
+    // 5. Limit
     const limitSelect = document.getElementById("limit-select");
     if (limitSelect) {
         limitSelect.addEventListener("change", function() {
@@ -466,35 +458,32 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // 7. Gestion des vues (grille / liste)
+    // 6. Vues (grille/liste)
     const viewGrid = document.getElementById("view-grid");
     const viewList = document.getElementById("view-list");
     if (viewGrid) {
         viewGrid.addEventListener("click", function() {
-            vueActuelle = 'grid';
-            if (viewGrid) viewGrid.classList.add("active");
-            if (viewList) viewList.classList.remove("active");
-            const produits = document.getElementById("liste-produits");
-            if (produits) produits.classList.remove("liste");
+            viewGrid.classList.add("active");
+            viewList?.classList.remove("active");
+            document.getElementById("liste-produits")?.classList.remove("liste");
         });
     }
     if (viewList) {
         viewList.addEventListener("click", function() {
-            vueActuelle = 'list';
-            if (viewList) viewList.classList.add("active");
-            if (viewGrid) viewGrid.classList.remove("active");
-            const produits = document.getElementById("liste-produits");
-            if (produits) produits.classList.add("liste");
+            viewList.classList.add("active");
+            viewGrid?.classList.remove("active");
+            document.getElementById("liste-produits")?.classList.add("liste");
         });
     }
 
-    // 8. Chargement initial des produits
+    // 7. Chargement initial
     chargerProduits(1);
-
     console.log("✅ Initialisation terminée.");
 });
 
-// Export pour les appels onclick dans le HTML
+// ============================================
+// EXPORT POUR LES APPELS onclick
+// ============================================
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;
 window.signalerProduit = signalerProduit;

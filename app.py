@@ -27,10 +27,14 @@ app = Flask(__name__)
 app.secret_key = JWT_SECRET
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", "https://*.onrender.com"])
 
-# Compression Gzip
+# ==========================================
+# COMPRESSION GZIP
+# ==========================================
 Compress(app)
 
-# Cloudinary
+# ==========================================
+# INITIALISATION CLOUDINARY
+# ==========================================
 cloudinary.config(
     cloud_name=CLOUDINARY_CONFIG['cloud_name'],
     api_key=CLOUDINARY_CONFIG['api_key'],
@@ -42,17 +46,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# CACHE STATIQUE (en-têtes)
+# CACHE STATIQUE (en-têtes HTTP)
 # ==========================================
 @app.after_request
 def add_cache_headers(response):
     if request.path.startswith('/static/') or \
        request.path.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg')):
-        response.headers['Cache-Control'] = 'public, max-age=604800'
+        response.headers['Cache-Control'] = 'public, max-age=604800'  # 7 jours
     return response
 
 # ==========================================
-# SCHEMAS
+# SCHEMAS (validation des données)
 # ==========================================
 class InscriptionSchema(Schema):
     nom = fields.Str(required=True, validate=validate.Length(min=2, max=100))
@@ -80,7 +84,7 @@ class ResetPasswordSchema(Schema):
     email = fields.Email(required=True)
 
 # ==========================================
-# CSRF
+# CSRF (protection)
 # ==========================================
 def generer_token_csrf():
     token = str(uuid.uuid4())
@@ -131,6 +135,7 @@ def get_admin_id(token):
     return payload['user_id'] if payload and payload.get('role') == 'admin' else None
 
 def log_action(action, details=None, ip=None):
+    # Désactiver les logs pour les routes à fort trafic
     if action in ['vue_produit', 'recherche', 'filtrage']:
         return
     conn = obtenir_connexion()
@@ -237,7 +242,7 @@ def invalidate_product_cache():
     get_cached_categories.cache_clear()
 
 # ==========================================
-# ROUTES
+# ROUTES PRINCIPALES
 # ==========================================
 @app.route('/csrf-token', methods=['GET'])
 def get_csrf_token():
@@ -308,33 +313,188 @@ def afficher_produit_html(id):
 # ==========================================
 @app.route('/vendeurs/inscription', methods=['POST'])
 def inscription_vendeur():
-    # ... (identique à votre version)
-    pass
+    try:
+        data = InscriptionSchema().load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
+    mdp_hash = hash_mot_de_passe(data['mot_de_passe'])
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"message": "Erreur connexion BD"}), 500
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO vendeurs (
+                nom, email, mot_de_passe, num_whatsapp,
+                localisation_boutique, localisation_detaillee, nom_boutique,
+                email_confirme
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['nom'],
+            data['email'],
+            mdp_hash,
+            data.get('num_whatsapp', ''),
+            data.get('localisation_boutique', ''),
+            data.get('localisation_detaillee', ''),
+            data.get('nom_boutique', ''),
+            True
+        ))
+        conn.commit()
+        vendeur_id = cur.lastrowid
+        token = str(uuid.uuid4())
+        cur.execute(
+            "INSERT INTO email_tokens (email, token, type, date_expiration) VALUES (%s, %s, 'confirmation', NOW() + INTERVAL 24 HOUR)",
+            (data['email'], token)
+        )
+        conn.commit()
+        envoyer_email_confirmation(data['email'], data['nom'], token)
+        log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
+        envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin.html#vendeurs")
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
+    except Exception as e:
+        import traceback
+        conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 @app.route('/vendeurs/connexion', methods=['POST'])
 def connexion_vendeur():
-    # ... (identique)
-    pass
+    data = request.get_json()
+    if not data.get('email') or not data.get('mot_de_passe'):
+        return jsonify({"message": "Email et mot de passe obligatoires"}), 400
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"message": "Erreur connexion BD"}), 500
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM vendeurs WHERE email = %s", (data['email'],))
+    vendeur = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not vendeur or not verifier_mot_de_passe(data['mot_de_passe'], vendeur["mot_de_passe"]):
+        return jsonify({"message": "Email ou mot de passe incorrect"}), 401
+    if not vendeur["email_confirme"]:
+        return jsonify({"message": "Veuillez confirmer votre email"}), 403
+    if vendeur["statut"] != "valide":
+        return jsonify({"message": "Compte en attente de validation"}), 403
+    token_jwt = generer_jwt(vendeur["id"], role='vendeur')
+    csrf_token = generer_token_csrf()
+    log_action("connexion_vendeur", f"Email: {data['email']}", request.remote_addr)
+    return jsonify({"message": "Connexion réussie", "token": token_jwt, "csrf_token": csrf_token})
 
 @app.route('/vendeurs/me', methods=['GET'])
 def me_vendeur():
-    # ... (identique)
-    pass
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT id, nom, email, num_whatsapp, localisation_boutique, localisation_detaillee, nom_boutique, statut FROM vendeurs WHERE id = %s", (id_vendeur,))
+    vendeur = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": vendeur})
 
 @app.route('/confirmer-email', methods=['GET'])
 def confirmer_email():
-    # ... (identique)
-    pass
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"message": "Token manquant"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT email FROM email_tokens WHERE token = %s AND type = 'confirmation' AND date_expiration > NOW()", (token,))
+    token_data = cur.fetchone()
+    if not token_data:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Token invalide ou expiré"}), 400
+    cur.execute("UPDATE vendeurs SET email_confirme = TRUE WHERE email = %s", (token_data['email'],))
+    conn.commit()
+    cur.execute("DELETE FROM email_tokens WHERE token = %s", (token,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    log_action("confirmation_email", f"Email: {token_data['email']}", request.remote_addr)
+    return jsonify({"message": "Email confirmé avec succès !"})
 
 @app.route('/vendeurs/reset-password', methods=['POST'])
 def reset_password():
-    # ... (identique)
-    pass
+    try:
+        data = ResetPasswordSchema().load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"status": "error", "message": "Email invalide", "errors": err.messages}), 400
+    
+    email = data['email']
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"message": "Erreur connexion BD"}), 500
+    
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM vendeurs WHERE email = %s", (email,))
+    vendeur = cur.fetchone()
+    cur.close()
+    
+    if not vendeur:
+        return jsonify({"message": "Aucun compte associé à cet email"}), 404
+    
+    token = str(uuid.uuid4())
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO email_tokens (email, token, type, date_expiration) VALUES (%s, %s, 'reset', NOW() + INTERVAL 24 HOUR)",
+        (email, token)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    envoyer_email_reset(email, token)
+    log_action("reset_password", f"Email: {email}", request.remote_addr)
+    
+    return jsonify({"message": "Email de réinitialisation envoyé"}), 200
 
 @app.route('/vendeurs/reset-password/confirm', methods=['POST'])
 def confirm_reset_password():
-    # ... (identique)
-    pass
+    data = request.get_json()
+    token = data.get('token')
+    nouveau_mot_de_passe = data.get('nouveau_mot_de_passe')
+    
+    if not token or not nouveau_mot_de_passe:
+        return jsonify({"message": "Token et mot de passe requis"}), 400
+    
+    if len(nouveau_mot_de_passe) < 6:
+        return jsonify({"message": "Le mot de passe doit contenir au moins 6 caractères"}), 400
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT email FROM email_tokens WHERE token = %s AND type = 'reset' AND date_expiration > NOW()",
+        (token,)
+    )
+    token_data = cur.fetchone()
+    
+    if not token_data:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Token invalide ou expiré"}), 400
+    
+    email = token_data['email']
+    mdp_hash = hash_mot_de_passe(nouveau_mot_de_passe)
+    
+    cur.execute("UPDATE vendeurs SET mot_de_passe = %s WHERE email = %s", (mdp_hash, email))
+    conn.commit()
+    cur.execute("DELETE FROM email_tokens WHERE token = %s", (token,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
+    
+    return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
 # ==========================================
 # PRODUITS (PUBLIC) - OPTIMISÉES
@@ -464,7 +624,7 @@ def filtrer_produits():
     })
 
 # ==========================================
-# AUTRES ROUTES (recherche, autocomplete, boutique...)
+# AUTOCOMPLÉTION, RECHERCHE, BOUTIQUE
 # ==========================================
 @app.route('/produits/autocomplete', methods=['GET'])
 def autocomplete_produits():
@@ -516,8 +676,25 @@ def rechercher_produits():
 
 @app.route('/boutique/<int:id_vendeur>', methods=['GET'])
 def boutique_vendeur(id_vendeur):
-    # ... (identique)
-    pass
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, nom, nom_boutique, localisation_boutique, localisation_detaillee, num_whatsapp
+        FROM vendeurs WHERE id = %s AND statut = 'valide'
+    """, (id_vendeur,))
+    vendeur = cur.fetchone()
+    if not vendeur:
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Boutique introuvable"}), 404
+    cur.execute("""
+        SELECT id, nom_produit, description_produit, prix, vues, clic_whatsapp, image_url, promotion
+        FROM produits WHERE id_vendeur = %s AND statut = 'valide'
+    """, (id_vendeur,))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"boutique": vendeur, "produits": produits})
 
 # ==========================================
 # CRUD PRODUITS (avec invalidation de cache)
@@ -525,20 +702,124 @@ def boutique_vendeur(id_vendeur):
 @app.route('/produits', methods=['POST'])
 @require_csrf
 def ajouter_produit():
-    # ... (identique)
-    pass
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    try:
+        data = ProduitSchema().load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM produits WHERE nom_produit = %s AND id_vendeur = %s", (data['nom_produit'], id_vendeur))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "❌ Vous avez déjà un produit avec ce nom."}), 400
+    try:
+        cur.execute("""
+            INSERT INTO produits (nom_produit, description_produit, prix, promotion, categorie, genre, image_url, id_vendeur)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['nom_produit'],
+            data.get('description_produit', ''),
+            data['prix'],
+            data.get('promotion', 0),
+            data['categorie'],
+            data.get('genre', 'unisexe'),
+            data.get('image_url', ''),
+            id_vendeur
+        ))
+        conn.commit()
+        produit_id = cur.lastrowid
+        invalidate_product_cache()
+        log_action("ajout_produit", f"Produit: {data['nom_produit']}", request.remote_addr)
+        envoyer_notification("nouveau_produit", "admin", 1, f"Nouveau produit : {data['nom_produit']}", "/admin.html#produits")
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Produit ajouté 🚀", "produit_id": produit_id}), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/produits/<int:id>', methods=['PUT'])
 @require_csrf
 def modifier_produit(id):
-    # ... (identique)
-    pass
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    try:
+        data = ProduitSchema(partial=True).load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+    cur = conn.cursor()
+    cur.execute("SELECT id_vendeur FROM produits WHERE id = %s", (id,))
+    produit = cur.fetchone()
+    if not produit or produit["id_vendeur"] != id_vendeur:
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Accès refusé"}), 403
+    try:
+        cur.execute("""
+            UPDATE produits SET
+                nom_produit=%s,
+                description_produit=%s,
+                prix=%s,
+                promotion=%s,
+                categorie=%s,
+                image_url=%s
+            WHERE id=%s
+        """, (
+            data.get('nom_produit'),
+            data.get('description_produit'),
+            data.get('prix'),
+            data.get('promotion', 0),
+            data.get('categorie'),
+            data.get('image_url'),
+            id
+        ))
+        conn.commit()
+        invalidate_product_cache()
+        log_action("modification_produit", f"Produit ID: {id}", request.remote_addr)
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Produit modifié 🚀"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/produits/<int:id>', methods=['DELETE'])
 @require_csrf
 def supprimer_produit(id):
-    # ... (identique)
-    pass
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+    cur = conn.cursor()
+    cur.execute("SELECT id_vendeur FROM produits WHERE id = %s", (id,))
+    produit = cur.fetchone()
+    if not produit or produit["id_vendeur"] != id_vendeur:
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Accès refusé"}), 403
+    try:
+        cur.execute("DELETE FROM produits WHERE id = %s", (id,))
+        conn.commit()
+        invalidate_product_cache()
+        log_action("suppression_produit", f"Produit ID: {id}", request.remote_addr)
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Produit supprimé"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
 # UPLOAD IMAGES (avec timeout)
@@ -546,19 +827,537 @@ def supprimer_produit(id):
 @app.route('/upload/<int:produit_id>', methods=['POST'])
 @require_csrf
 def upload_images(produit_id):
-    # ... (identique)
-    pass
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+    cur = conn.cursor()
+    cur.execute("SELECT id_vendeur FROM produits WHERE id = %s", (produit_id,))
+    produit = cur.fetchone()
+    if not produit or produit["id_vendeur"] != id_vendeur:
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Accès refusé"}), 403
+
+    fichiers = request.files.getlist('images')
+    if len(fichiers) > UPLOAD_CONFIG['max_files']:
+        return jsonify({"status": "error", "message": f"Maximum {UPLOAD_CONFIG['max_files']} images"}), 400
+
+    images_urls = []
+    for i, fichier in enumerate(fichiers):
+        if fichier and allowed_file(fichier.filename):
+            fichier.seek(0, os.SEEK_END)
+            taille = fichier.tell()
+            fichier.seek(0)
+            if taille > UPLOAD_CONFIG['max_file_size']:
+                return jsonify({"status": "error", "message": "Chaque image < 10 Mo"}), 400
+
+            try:
+                resultat = cloudinary.uploader.upload(
+                    fichier,
+                    folder=f"leyamo/produits/{produit_id}",
+                    public_id=f"image_{i}",
+                    transformation=[
+                        {"width": 800, "height": 800, "crop": "limit"},
+                        {"quality": "auto:eco"},
+                        {"fetch_format": "auto"}
+                    ],
+                    timeout=10
+                )
+                url = resultat['secure_url']
+                cur.execute(
+                    "INSERT INTO images_produits (produit_id, image_url, ordre) VALUES (%s, %s, %s)",
+                    (produit_id, url, i)
+                )
+                images_urls.append(url)
+            except Exception as e:
+                logger.error(f"Erreur Cloudinary: {e}")
+                return jsonify({"status": "error", "message": "Erreur lors de l'upload vers Cloudinary"}), 500
+
+    if images_urls:
+        cur.execute("UPDATE produits SET image_url = %s WHERE id = %s", (images_urls[0], produit_id))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    log_action("upload_images", f"Produit ID: {produit_id}, {len(images_urls)} images", request.remote_addr)
+    return jsonify({
+        "status": "success",
+        "message": f"{len(images_urls)} images uploadées vers Cloudinary",
+        "images": images_urls
+    }), 201
 
 @app.route('/produits/<int:id>/whatsapp', methods=['POST'])
 def clic_whatsapp(id):
-    # ... (identique)
-    pass
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("UPDATE produits SET clic_whatsapp = clic_whatsapp + 1 WHERE id = %s", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Clic WhatsApp enregistré"})
 
 # ==========================================
-# DASHBOARD VENDEUR, ADMIN, AVIS, FAVORIS...
+# DASHBOARD VENDEUR
 # ==========================================
-# (Toutes les autres routes sont conservées telles quelles)
-# Je ne les recopie pas ici pour éviter la redondance.
+@app.route('/vendeurs/me/dashboard', methods=['GET'])
+def me_dashboard():
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM vendeurs WHERE id = %s", (id_vendeur,))
+    vendeur = cur.fetchone()
+    cur.execute("""
+        SELECT id, nom_produit, prix, promotion, categorie, vues, clic_whatsapp, date_creation, image_url, statut, motif_refus
+        FROM produits WHERE id_vendeur = %s ORDER BY date_creation DESC
+    """, (id_vendeur,))
+    produits = cur.fetchall()
+    cur.execute("""
+        SELECT COUNT(*) as total_produits, SUM(vues) as total_vues, SUM(clic_whatsapp) as total_clics
+        FROM produits WHERE id_vendeur = %s
+    """, (id_vendeur,))
+    stats = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify({"vendeur": vendeur, "statistiques": stats, "produits": produits})
+
+@app.route('/vendeurs/me/produits/refuses', methods=['GET'])
+def produits_refuses_vendeur():
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM produits WHERE id_vendeur = %s AND statut = 'refuse' ORDER BY date_creation DESC", (id_vendeur,))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": produits})
+
+@app.route('/vendeurs/me/supprimer', methods=['DELETE'])
+@require_csrf
+def supprimer_compte_vendeur():
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"status": "error", "message": "Erreur connexion BD"}), 500
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM vendeurs WHERE id = %s", (id_vendeur,))
+        conn.commit()
+        log_action("suppression_compte_vendeur", f"Vendeur ID: {id_vendeur}", request.remote_addr)
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Votre compte a été supprimé."}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ==========================================
+# SIGNALEMENTS
+# ==========================================
+@app.route('/produits/<int:id>/signaler', methods=['POST'])
+def signaler_produit(id):
+    try:
+        data = SignalementSchema().load(request.get_json())
+    except ValidationError as err:
+        return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT nom_produit FROM produits WHERE id = %s", (id,))
+    produit = cur.fetchone()
+    if not produit:
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Produit introuvable"}), 404
+    cur.execute("INSERT INTO signalements (produit_id, motif, description) VALUES (%s, %s, %s)", (id, data['motif'], data.get('description', '')))
+    conn.commit()
+    envoyer_notification("signalement", "admin", 1, f"Signalement sur '{produit['nom_produit']}'", "/admin.html#signalements")
+    log_action("signalement_produit", f"Produit ID: {id}", request.remote_addr)
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Signalement enregistré"}), 201
+
+# ==========================================
+# ADMIN
+# ==========================================
+@app.route('/admin/connexion', methods=['POST'])
+def admin_connexion():
+    data = request.get_json()
+    if not data.get('email') or not data.get('mot_de_passe'):
+        return jsonify({"message": "Email et mot de passe obligatoires"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM admins WHERE email = %s", (data['email'],))
+    admin = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not admin or not verifier_mot_de_passe(data['mot_de_passe'], admin['mot_de_passe']):
+        return jsonify({"message": "Identifiants incorrects"}), 401
+    token_jwt = generer_jwt(admin["id"], role='admin')
+    csrf_token = generer_token_csrf()
+    return jsonify({"message": "Connexion admin réussie", "token": token_jwt, "csrf_token": csrf_token})
+
+@app.route('/admin/vendeurs', methods=['GET'])
+def admin_vendeurs():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM vendeurs ORDER BY date_creation DESC")
+    vendeurs = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": vendeurs})
+
+@app.route('/admin/vendeurs/<int:id>/valider', methods=['PUT'])
+@require_csrf
+def admin_valider_vendeur(id):
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    data = request.get_json()
+    statut = data.get('statut')
+    motif = data.get('motif', '')
+    if statut not in ['valide', 'refuse']:
+        return jsonify({"status": "error", "message": "Statut invalide"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT nom FROM vendeurs WHERE id = %s", (id,))
+    vendeur = cur.fetchone()
+    cur.execute("UPDATE vendeurs SET statut = %s, motif_refus = %s WHERE id = %s", (statut, motif, id))
+    conn.commit()
+    if statut == 'valide':
+        envoyer_notification("compte_valide", "vendeur", id, "Votre compte a été validé !", "/connexion.html")
+    else:
+        envoyer_notification("compte_refuse", "vendeur", id, f"Compte refusé. Motif: {motif}", None)
+    log_action("admin_valider_vendeur", f"Vendeur ID: {id}, Statut: {statut}", request.remote_addr)
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": f"Vendeur {statut} avec succès"})
+
+@app.route('/admin/produits', methods=['GET'])
+def admin_produits():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    filtre = request.args.get('filtre', 'recent')
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 30, type=int)
+    offset = (page - 1) * limit
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    requete = """
+        SELECT p.*, v.nom_boutique, v.nom as nom_vendeur
+        FROM produits p JOIN vendeurs v ON p.id_vendeur = v.id
+    """
+    if filtre == 'vues':
+        requete += " ORDER BY p.vues DESC"
+    elif filtre == 'ancien':
+        requete += " ORDER BY p.date_creation ASC"
+    else:
+        requete += " ORDER BY p.date_creation DESC"
+    count_requete = "SELECT COUNT(*) as total FROM (" + requete + ") as sous_requete"
+    cur.execute(count_requete)
+    total = cur.fetchone()['total']
+    requete += " LIMIT %s OFFSET %s"
+    cur.execute(requete, (limit, offset))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({
+        "status": "success",
+        "data": produits,
+        "pagination": {"page": page, "limit": limit, "total": total, "pages": (total + limit - 1) // limit if total > 0 else 1}
+    })
+
+@app.route('/admin/produits/<int:id>/valider', methods=['PUT'])
+@require_csrf
+def admin_valider_produit(id):
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    data = request.get_json()
+    statut = data.get('statut')
+    motif = data.get('motif', '')
+    if statut not in ['valide', 'refuse']:
+        return jsonify({"status": "error", "message": "Statut invalide"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT nom_produit, id_vendeur FROM produits WHERE id = %s", (id,))
+    produit = cur.fetchone()
+    cur.execute("UPDATE produits SET statut = %s, motif_refus = %s WHERE id = %s", (statut, motif, id))
+    conn.commit()
+    invalidate_product_cache()
+    if statut == 'valide':
+        envoyer_notification("produit_valide", "vendeur", produit['id_vendeur'],
+                            f"Votre produit '{produit['nom_produit']}' a été validé !", f"/produit.html?id={id}")
+    else:
+        envoyer_notification("produit_refuse", "vendeur", produit['id_vendeur'],
+                            f"Produit '{produit['nom_produit']}' refusé. Motif: {motif}", "/dashboard.html#refuses")
+    log_action("admin_valider_produit", f"Produit ID: {id}, Statut: {statut}", request.remote_addr)
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": f"Produit {statut} avec succès"})
+
+@app.route('/admin/produits/<int:id>/publier', methods=['POST'])
+@require_csrf
+def admin_publier_produit(id):
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    data = request.get_json()
+    plateforme = data.get('plateforme')
+    message = data.get('message', '')
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM produits WHERE id = %s", (id,))
+    produit = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not produit:
+        return jsonify({"status": "error", "message": "Produit introuvable"}), 404
+    if plateforme == 'whatsapp':
+        url = f"https://wa.me/?text={message}"
+    elif plateforme == 'facebook':
+        url = f"https://www.facebook.com/sharer/sharer.php?u={message}"
+    else:
+        return jsonify({"status": "error", "message": "Plateforme non supportée"}), 400
+    log_action("admin_publier_produit", f"Produit ID: {id}, Plateforme: {plateforme}", request.remote_addr)
+    return jsonify({"status": "success", "message": "URL de partage générée", "url": url})
+
+@app.route('/admin/stats', methods=['GET'])
+def admin_stats():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) as total FROM produits")
+    total_produits = cur.fetchone()['total']
+    cur.execute("SELECT COUNT(*) as total FROM produits WHERE statut = 'en_attente'")
+    produits_attente = cur.fetchone()['total']
+    cur.execute("SELECT COUNT(*) as total FROM produits WHERE statut = 'valide'")
+    produits_valides = cur.fetchone()['total']
+    cur.execute("SELECT COUNT(*) as total FROM produits WHERE statut = 'refuse'")
+    produits_refuses = cur.fetchone()['total']
+    cur.execute("SELECT COUNT(*) as total FROM vendeurs")
+    total_vendeurs = cur.fetchone()['total']
+    cur.execute("SELECT COUNT(*) as total FROM vendeurs WHERE statut = 'en_attente'")
+    vendeurs_attente = cur.fetchone()['total']
+    cur.execute("SELECT SUM(vues) as total FROM produits")
+    total_vues = cur.fetchone()['total'] or 0
+    cur.execute("SELECT SUM(clic_whatsapp) as total FROM produits")
+    total_clics = cur.fetchone()['total'] or 0
+    cur.execute("SELECT COUNT(*) as total FROM signalements WHERE statut = 'en_attente'")
+    signalements_attente = cur.fetchone()['total']
+    cur.execute("""
+        SELECT DATE_FORMAT(date_creation, '%Y-%m') as mois, SUM(vues) as vues
+        FROM produits WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        GROUP BY mois ORDER BY mois ASC
+    """)
+    vues_mois = cur.fetchall()
+    cur.execute("SELECT id, nom_produit, vues, prix, categorie FROM produits ORDER BY vues DESC LIMIT 5")
+    top_produits = cur.fetchall()
+    cur.execute("""
+        SELECT v.id, v.nom, v.nom_boutique, COUNT(p.id) as nb_produits, SUM(p.vues) as total_vues
+        FROM vendeurs v LEFT JOIN produits p ON v.id = p.id_vendeur
+        GROUP BY v.id ORDER BY nb_produits DESC LIMIT 5
+    """)
+    top_vendeurs = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({
+        "status": "success",
+        "data": {
+            "total_produits": total_produits,
+            "produits_attente": produits_attente,
+            "produits_valides": produits_valides,
+            "produits_refuses": produits_refuses,
+            "total_vendeurs": total_vendeurs,
+            "vendeurs_attente": vendeurs_attente,
+            "total_vues": total_vues,
+            "total_clics": total_clics,
+            "signalements_attente": signalements_attente,
+            "vues_mois": vues_mois,
+            "top_produits": top_produits,
+            "top_vendeurs": top_vendeurs
+        }
+    })
+
+@app.route('/admin/logs', methods=['GET'])
+def admin_logs():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 50, type=int)
+    offset = (page - 1) * limit
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) as total FROM logs")
+    total = cur.fetchone()['total']
+    cur.execute("SELECT * FROM logs ORDER BY date_creation DESC LIMIT %s OFFSET %s", (limit, offset))
+    logs = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({
+        "status": "success",
+        "data": logs,
+        "pagination": {"page": page, "limit": limit, "total": total, "pages": (total + limit - 1) // limit if total > 0 else 1}
+    })
+
+@app.route('/admin/notifications', methods=['GET'])
+def admin_notifications():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM notifications WHERE destinataire = 'admin' ORDER BY date_creation DESC LIMIT 50")
+    notifications = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": notifications})
+
+@app.route('/admin/notifications/<int:id>/lu', methods=['PUT'])
+@require_csrf
+def admin_notification_lu(id):
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("UPDATE notifications SET lu = TRUE WHERE id = %s", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Notification marquée comme lue"})
+
+# ==========================================
+# ADMIN - SIGNALEMENTS
+# ==========================================
+@app.route('/admin/signalements', methods=['GET'])
+def admin_signalements():
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT s.*, p.nom_produit
+        FROM signalements s
+        JOIN produits p ON s.produit_id = p.id
+        WHERE s.statut = 'en_attente'
+        ORDER BY s.date_creation DESC
+    """)
+    signalements = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": signalements})
+
+@app.route('/admin/signalements/<int:id>/traiter', methods=['PUT'])
+@require_csrf
+def admin_traiter_signalement(id):
+    if not get_admin_id(request.headers.get("Authorization")):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("UPDATE signalements SET statut = 'traite' WHERE id = %s", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Signalement traité"})
+
+# ==========================================
+# AVIS
+# ==========================================
+@app.route('/produits/<int:id>/avis', methods=['GET'])
+def get_avis(id):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM avis WHERE produit_id = %s ORDER BY date_creation DESC", (id,))
+    avis = cur.fetchall()
+    cur.execute("SELECT AVG(note) as moyenne, COUNT(*) as total FROM avis WHERE produit_id = %s", (id,))
+    stats = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify({
+        "status": "success",
+        "data": avis,
+        "moyenne": stats['moyenne'] if stats['moyenne'] else 0,
+        "total": stats['total'] or 0
+    })
+
+@app.route('/produits/<int:id>/avis', methods=['POST'])
+def ajouter_avis(id):
+    data = request.get_json()
+    client_nom = data.get('client_nom', 'Anonyme')
+    note = data.get('note', 5)
+    commentaire = data.get('commentaire', '')
+    if note < 1 or note > 5:
+        return jsonify({"status": "error", "message": "La note doit être entre 1 et 5"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM produits WHERE id = %s", (id,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Produit introuvable"}), 404
+    cur.execute("INSERT INTO avis (produit_id, client_nom, note, commentaire) VALUES (%s, %s, %s, %s)", (id, client_nom, note, commentaire))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Avis ajouté"}), 201
+
+# ==========================================
+# FAVORIS
+# ==========================================
+@app.route('/favoris', methods=['POST'])
+def ajouter_favori():
+    data = request.get_json()
+    produit_id = data.get('produit_id')
+    client_email = data.get('client_email')
+    if not produit_id or not client_email:
+        return jsonify({"status": "error", "message": "Produit et email requis"}), 400
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO favoris (produit_id, client_email) VALUES (%s, %s)", (produit_id, client_email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Ajouté aux favoris"}), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Déjà dans les favoris"}), 400
+
+@app.route('/favoris', methods=['DELETE'])
+def supprimer_favori():
+    data = request.get_json()
+    produit_id = data.get('produit_id')
+    client_email = data.get('client_email')
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM favoris WHERE produit_id = %s AND client_email = %s", (produit_id, client_email))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "message": "Retiré des favoris"}), 200
+
+@app.route('/favoris/<email>', methods=['GET'])
+def get_favoris(email):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT p.* FROM produits p
+        JOIN favoris f ON p.id = f.produit_id
+        WHERE f.client_email = %s AND p.statut = 'valide'
+    """, (email,))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": produits})
 
 # ==========================================
 # LANCEMENT

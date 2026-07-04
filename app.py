@@ -815,7 +815,8 @@ def upload_images(produit_id):
             except Exception as e:
                 logger.error(f"Erreur Cloudinary: {e}")
                 return jsonify({"status": "error", "message": "Erreur lors de l'upload vers Cloudinary"}), 500
-
+            if images_urls:
+                cur.execute("UPDATE produits SET image_url = %s WHERE id = %s", (images_urls[0], produit_id))
     conn.commit()
     cur.close()
     conn.close()

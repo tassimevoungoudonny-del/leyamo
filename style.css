@@ -233,7 +233,7 @@ nav a:hover {
 }
 
 /* ============================================
-   BOUTON DÉCONNEXION (admin, dashboard)
+   BOUTON DÉCONNEXION
    ============================================ */
 .btn-deconnexion {
     background: #dc2626;
@@ -1546,6 +1546,84 @@ body.dark-mode .avis-section .avis-form textarea {
 .carte {
     animation: fadeInUp 0.4s ease forwards;
     opacity: 0;
+}
+
+/* ============================================
+   MODALE PERSONNALISÉE
+   ============================================ */
+#modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 99999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+#modal-overlay .modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 30px 32px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+    border-top: 5px solid #0f766e;
+}
+body.dark-mode #modal-overlay .modal-content {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+body.dark-mode #modal-overlay .modal-content h3 {
+    color: #a7f3d0;
+}
+body.dark-mode #modal-overlay .modal-content p {
+    color: #94a3b8;
+}
+#modal-overlay .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+#modal-overlay .modal-actions .btn-annuler {
+    padding: 10px 24px;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    background: white;
+    color: #1e293b;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+#modal-overlay .modal-actions .btn-annuler:hover {
+    background: #f1f5f9;
+}
+#modal-overlay .modal-actions .btn-confirmer {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 50px;
+    background: #dc2626;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+#modal-overlay .modal-actions .btn-confirmer:hover {
+    background: #b91c1c;
+}
+body.dark-mode #modal-overlay .modal-actions .btn-annuler {
+    background: #334155;
+    color: #e2e8f0;
+    border-color: #475569;
+}
+body.dark-mode #modal-overlay .modal-actions .btn-annuler:hover {
+    background: #475569;
 }
 
 /* ============================================

@@ -16,7 +16,7 @@ import cloudinary.uploader
 
 from config import (
     JWT_SECRET, UPLOAD_CONFIG, MAILGUN_API_KEY, MAILGUN_DOMAIN,
-    R2_CONFIG, FRONTEND_URL, BACKEND_URL, DATABASE_URL,
+    FRONTEND_URL, BACKEND_URL, DATABASE_URL,
     CLOUDINARY_CONFIG
 )
 from base_de_donnees import obtenir_connexion
@@ -796,7 +796,6 @@ def upload_images(produit_id):
                 return jsonify({"status": "error", "message": "Chaque image < 10 Mo"}), 400
 
             try:
-                # Upload vers Cloudinary avec optimisation
                 resultat = cloudinary.uploader.upload(
                     fichier,
                     folder=f"leyamo/produits/{produit_id}",
@@ -1093,7 +1092,7 @@ def admin_stats():
     signalements_attente = cur.fetchone()['total']
     cur.execute("""
         SELECT DATE_FORMAT(date_creation, '%Y-%m') as mois, SUM(vues) as vues
-        FROM produits WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        FROM produtos WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
         GROUP BY mois ORDER BY mois ASC
     """)
     vues_mois = cur.fetchall()
@@ -1319,5 +1318,5 @@ def get_favoris(email):
 # LANCEMENT
 # ==========================================
 if __name__ == "__main__":
-    os.makedirs('uploads', exist_ok=True)  # Gardé pour compatibilité (mais plus utilisé)
+    os.makedirs('uploads', exist_ok=True)
     app.run(debug=False, host='0.0.0.0', port=5000)

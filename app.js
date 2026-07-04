@@ -5,6 +5,11 @@ let prixMin = 0;
 let prixMax = 100000;
 
 // ============================================
+// IMAGE PAR DÉFAUT (SVG intégré)
+// ============================================
+const DEFAULT_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='28' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
+
+// ============================================
 // LOADER
 // ============================================
 function afficherLoader(actif) {
@@ -128,7 +133,7 @@ function afficherAutocomplete(resultats) {
     resultats.forEach(item => {
         const div = document.createElement("div");
         div.className = "autocomplete-item";
-        const image = item.image_url || "https://via.placeholder.com/40x40";
+        const image = item.image_url || DEFAULT_IMAGE;
         div.innerHTML = `
             <img src="${image}" alt="${item.nom_produit}">
             <div class="info">
@@ -279,7 +284,7 @@ function afficherProduits(produits) {
         return;
     }
     produits.forEach(produit => {
-        const image = produit.image_url || "https://via.placeholder.com/400x300";
+        const image = produit.image_url || DEFAULT_IMAGE;
         const prixFormate = formaterPrix(produit.prix);
         const promotion = produit.promotion || 0;
         let prixAffichage = `<span class="prix">${prixFormate} FCFA</span>`;
@@ -344,7 +349,7 @@ async function quickView(id) {
             `;
             document.body.appendChild(overlay);
         }
-        document.getElementById("qv-image").src = p.images && p.images.length > 0 ? p.images[0] : "https://via.placeholder.com/800x400";
+        document.getElementById("qv-image").src = (p.images && p.images.length > 0) ? p.images[0] : DEFAULT_IMAGE;
         document.getElementById("qv-titre").textContent = p.nom_produit;
         const prixFormate = formaterPrix(p.prix);
         if (p.promotion && p.promotion > 0) {
@@ -359,7 +364,7 @@ async function quickView(id) {
         }
         document.getElementById("qv-description").textContent = p.description_produit || "Aucune description";
         document.getElementById("qv-boutique").innerHTML = `🏪 ${p.nom_boutique || 'Boutique'}`;
-        // Avis (simplifié)
+        // Avis
         try {
             const avisRep = await fetch(`${API}/produits/${id}/avis`);
             const avisData = await avisRep.json();

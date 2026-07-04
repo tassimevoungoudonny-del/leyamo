@@ -184,7 +184,7 @@ function afficherProduitsAdmin(produits) {
         c.innerHTML += `
             <div style="background:white;padding:16px 20px;border-radius:12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                 <div style="flex:2;min-width:150px;">
-                    <img src="${p.image_url || 'https://via.placeholder.com/60x60'}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;float:left;margin-right:12px;">
+                    <img src="${p.image_url || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'300\'%3E%3Crect width=\'400\' height=\'300\' fill=\'%23f1f5f9\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' font-family=\'Arial, sans-serif\' font-size=\'28\' fill=\'%2394a3b8\' text-anchor=\'middle\' dy=\'.3em\'%3ELeyamo%3C/text%3E%3C/svg%3E'}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;float:left;margin-right:12px;">
                     <strong>${p.nom_produit}</strong>
                     <p style="color:#0f766e;font-weight:600;">${p.prix} FCFA</p>
                     <p style="font-size:13px;">🏷️ ${p.categorie}</p>

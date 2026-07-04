@@ -11,10 +11,13 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from marshmallow import Schema, fields, validate, ValidationError
+import cloudinary
+import cloudinary.uploader
 
 from config import (
     JWT_SECRET, UPLOAD_CONFIG, MAILGUN_API_KEY, MAILGUN_DOMAIN,
-    R2_CONFIG, FRONTEND_URL, BACKEND_URL, DATABASE_URL
+    R2_CONFIG, FRONTEND_URL, BACKEND_URL, DATABASE_URL,
+    CLOUDINARY_CONFIG
 )
 from base_de_donnees import obtenir_connexion
 
@@ -22,6 +25,16 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = JWT_SECRET
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", "https://*.onrender.com"])
+
+# ==========================================
+# INITIALISATION CLOUDINARY
+# ==========================================
+cloudinary.config(
+    cloud_name=CLOUDINARY_CONFIG['cloud_name'],
+    api_key=CLOUDINARY_CONFIG['api_key'],
+    api_secret=CLOUDINARY_CONFIG['api_secret'],
+    secure=True
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -205,10 +218,6 @@ def home():
 @app.route('/health')
 def health():
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory('uploads', filename)
 
 @app.route('/<path:path>')
 def serve_static(path):
@@ -414,7 +423,6 @@ def reset_password():
     if not vendeur:
         return jsonify({"message": "Aucun compte associé à cet email"}), 404
     
-    # Générer un token
     token = str(uuid.uuid4())
     cur = conn.cursor()
     cur.execute(
@@ -425,7 +433,6 @@ def reset_password():
     cur.close()
     conn.close()
     
-    # Envoyer l'email
     envoyer_email_reset(email, token)
     log_action("reset_password", f"Email: {email}", request.remote_addr)
     
@@ -756,117 +763,7 @@ def supprimer_produit(id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# AVIS
-# ==========================================
-@app.route('/produits/<int:id>/avis', methods=['GET'])
-def get_avis(id):
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT * FROM avis WHERE produit_id = %s ORDER BY date_creation DESC
-    """, (id,))
-    avis = cur.fetchall()
-    
-    cur.execute("""
-        SELECT AVG(note) as moyenne, COUNT(*) as total FROM avis WHERE produit_id = %s
-    """, (id,))
-    stats = cur.fetchone()
-    cur.close()
-    conn.close()
-    
-    return jsonify({
-        "status": "success",
-        "data": avis,
-        "moyenne": stats['moyenne'] if stats['moyenne'] else 0,
-        "total": stats['total'] or 0
-    })
-
-@app.route('/produits/<int:id>/avis', methods=['POST'])
-def ajouter_avis(id):
-    data = request.get_json()
-    client_nom = data.get('client_nom', 'Anonyme')
-    note = data.get('note', 5)
-    commentaire = data.get('commentaire', '')
-    
-    if note < 1 or note > 5:
-        return jsonify({"status": "error", "message": "La note doit être entre 1 et 5"}), 400
-    
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM produits WHERE id = %s", (id,))
-    if not cur.fetchone():
-        cur.close()
-        conn.close()
-        return jsonify({"status": "error", "message": "Produit introuvable"}), 404
-    
-    cur.execute("""
-        INSERT INTO avis (produit_id, client_nom, note, commentaire)
-        VALUES (%s, %s, %s, %s)
-    """, (id, client_nom, note, commentaire))
-    conn.commit()
-    cur.close()
-    conn.close()
-    
-    return jsonify({"status": "success", "message": "Avis ajouté"}), 201
-
-# ==========================================
-# FAVORIS
-# ==========================================
-@app.route('/favoris', methods=['POST'])
-def ajouter_favori():
-    data = request.get_json()
-    produit_id = data.get('produit_id')
-    client_email = data.get('client_email')
-    
-    if not produit_id or not client_email:
-        return jsonify({"status": "error", "message": "Produit et email requis"}), 400
-    
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    try:
-        cur.execute("""
-            INSERT INTO favoris (produit_id, client_email)
-            VALUES (%s, %s)
-        """, (produit_id, client_email))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"status": "success", "message": "Ajouté aux favoris"}), 201
-    except Exception as e:
-        return jsonify({"status": "error", "message": "Déjà dans les favoris"}), 400
-
-@app.route('/favoris', methods=['DELETE'])
-def supprimer_favori():
-    data = request.get_json()
-    produit_id = data.get('produit_id')
-    client_email = data.get('client_email')
-    
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM favoris WHERE produit_id = %s AND client_email = %s", (produit_id, client_email))
-    conn.commit()
-    cur.close()
-    conn.close()
-    
-    return jsonify({"status": "success", "message": "Retiré des favoris"}), 200
-
-@app.route('/favoris/<email>', methods=['GET'])
-def get_favoris(email):
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT p.* FROM produits p
-        JOIN favoris f ON p.id = f.produit_id
-        WHERE f.client_email = %s AND p.statut = 'valide'
-    """, (email,))
-    produits = cur.fetchall()
-    cur.close()
-    conn.close()
-    
-    return jsonify({"status": "success", "data": produits})
-
-# ==========================================
-# UPLOAD IMAGES (local pour Render)
+# UPLOAD IMAGES VERS CLOUDINARY
 # ==========================================
 @app.route('/upload/<int:produit_id>', methods=['POST'])
 @require_csrf
@@ -875,6 +772,7 @@ def upload_images(produit_id):
     id_vendeur = get_vendeur_id(token)
     if not id_vendeur:
         return jsonify({"status": "error", "message": "Non authentifié"}), 401
+
     conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("SELECT id_vendeur FROM produits WHERE id = %s", (produit_id,))
@@ -883,11 +781,12 @@ def upload_images(produit_id):
         cur.close()
         conn.close()
         return jsonify({"status": "error", "message": "Accès refusé"}), 403
+
     fichiers = request.files.getlist('images')
     if len(fichiers) > UPLOAD_CONFIG['max_files']:
         return jsonify({"status": "error", "message": f"Maximum {UPLOAD_CONFIG['max_files']} images"}), 400
+
     images_urls = []
-    os.makedirs('uploads', exist_ok=True)
     for i, fichier in enumerate(fichiers):
         if fichier and allowed_file(fichier.filename):
             fichier.seek(0, os.SEEK_END)
@@ -895,20 +794,36 @@ def upload_images(produit_id):
             fichier.seek(0)
             if taille > UPLOAD_CONFIG['max_file_size']:
                 return jsonify({"status": "error", "message": "Chaque image < 10 Mo"}), 400
-            nom_secure = secure_filename(fichier.filename)
-            nom_unique = f"produit_{produit_id}_{i}_{nom_secure}"
-            chemin = os.path.join('uploads', nom_unique)
-            fichier.save(chemin)
-            url = f"{BACKEND_URL}/uploads/{nom_unique}"
-            cur.execute("INSERT INTO images_produits (produit_id, image_url, ordre) VALUES (%s, %s, %s)", (produit_id, url, i))
-            images_urls.append(url)
+
+            try:
+                # Upload vers Cloudinary avec optimisation
+                resultat = cloudinary.uploader.upload(
+                    fichier,
+                    folder=f"leyamo/produits/{produit_id}",
+                    public_id=f"image_{i}",
+                    transformation=[
+                        {"width": 800, "height": 800, "crop": "limit"},
+                        {"quality": "auto:eco"},
+                        {"fetch_format": "auto"}
+                    ]
+                )
+                url = resultat['secure_url']
+                cur.execute(
+                    "INSERT INTO images_produits (produit_id, image_url, ordre) VALUES (%s, %s, %s)",
+                    (produit_id, url, i)
+                )
+                images_urls.append(url)
+            except Exception as e:
+                logger.error(f"Erreur Cloudinary: {e}")
+                return jsonify({"status": "error", "message": "Erreur lors de l'upload vers Cloudinary"}), 500
+
     conn.commit()
     cur.close()
     conn.close()
     log_action("upload_images", f"Produit ID: {produit_id}, {len(images_urls)} images", request.remote_addr)
     return jsonify({
         "status": "success",
-        "message": f"{len(images_urls)} images uploadées",
+        "message": f"{len(images_urls)} images uploadées vers Cloudinary",
         "images": images_urls
     }), 201
 
@@ -1291,8 +1206,118 @@ def admin_traiter_signalement(id):
     return jsonify({"status": "success", "message": "Signalement traité"})
 
 # ==========================================
+# AVIS
+# ==========================================
+@app.route('/produits/<int:id>/avis', methods=['GET'])
+def get_avis(id):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT * FROM avis WHERE produit_id = %s ORDER BY date_creation DESC
+    """, (id,))
+    avis = cur.fetchall()
+    
+    cur.execute("""
+        SELECT AVG(note) as moyenne, COUNT(*) as total FROM avis WHERE produit_id = %s
+    """, (id,))
+    stats = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    return jsonify({
+        "status": "success",
+        "data": avis,
+        "moyenne": stats['moyenne'] if stats['moyenne'] else 0,
+        "total": stats['total'] or 0
+    })
+
+@app.route('/produits/<int:id>/avis', methods=['POST'])
+def ajouter_avis(id):
+    data = request.get_json()
+    client_nom = data.get('client_nom', 'Anonyme')
+    note = data.get('note', 5)
+    commentaire = data.get('commentaire', '')
+    
+    if note < 1 or note > 5:
+        return jsonify({"status": "error", "message": "La note doit être entre 1 et 5"}), 400
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM produits WHERE id = %s", (id,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"status": "error", "message": "Produit introuvable"}), 404
+    
+    cur.execute("""
+        INSERT INTO avis (produit_id, client_nom, note, commentaire)
+        VALUES (%s, %s, %s, %s)
+    """, (id, client_nom, note, commentaire))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "message": "Avis ajouté"}), 201
+
+# ==========================================
+# FAVORIS
+# ==========================================
+@app.route('/favoris', methods=['POST'])
+def ajouter_favori():
+    data = request.get_json()
+    produit_id = data.get('produit_id')
+    client_email = data.get('client_email')
+    
+    if not produit_id or not client_email:
+        return jsonify({"status": "error", "message": "Produit et email requis"}), 400
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO favoris (produit_id, client_email)
+            VALUES (%s, %s)
+        """, (produit_id, client_email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Ajouté aux favoris"}), 201
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Déjà dans les favoris"}), 400
+
+@app.route('/favoris', methods=['DELETE'])
+def supprimer_favori():
+    data = request.get_json()
+    produit_id = data.get('produit_id')
+    client_email = data.get('client_email')
+    
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM favoris WHERE produit_id = %s AND client_email = %s", (produit_id, client_email))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "message": "Retiré des favoris"}), 200
+
+@app.route('/favoris/<email>', methods=['GET'])
+def get_favoris(email):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT p.* FROM produits p
+        JOIN favoris f ON p.id = f.produit_id
+        WHERE f.client_email = %s AND p.statut = 'valide'
+    """, (email,))
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return jsonify({"status": "success", "data": produits})
+
+# ==========================================
 # LANCEMENT
 # ==========================================
 if __name__ == "__main__":
-    os.makedirs('uploads', exist_ok=True)
+    os.makedirs('uploads', exist_ok=True)  # Gardé pour compatibilité (mais plus utilisé)
     app.run(debug=False, host='0.0.0.0', port=5000)

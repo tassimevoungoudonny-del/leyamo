@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const preview = document.getElementById("preview-images");
         preview.innerHTML = "";
         imagesSelectionnees = [];
-        if (this.files.length > 5) {
+        if (this.files.length > 3) {
             afficherNotification("⚠️ Maximum 5 photos", "error");
             this.value = "";
             return;

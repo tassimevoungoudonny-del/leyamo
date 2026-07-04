@@ -17,11 +17,7 @@ DB_CONFIG = {
     "port": int(os.getenv("DB_PORT", 3306)),
 }
 
-# ==========================================
-# URLS DE L'APPLICATION
-# ==========================================
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5000")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:5000")
+ 
 
 # ==========================================
 # SÉCURITÉ
@@ -38,7 +34,7 @@ MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
 # UPLOAD
 # ==========================================
 UPLOAD_CONFIG = {
-    "max_files": 5,
+    "max_files": 3,
     "max_file_size": 10 * 1024 * 1024,
     "allowed_extensions": {'png', 'jpg', 'jpeg', 'gif', 'webp'},
 }
@@ -52,3 +48,20 @@ R2_CONFIG = {
     "endpoint_url": os.getenv("R2_ENDPOINT_URL"),
     "bucket_name": os.getenv("R2_BUCKET_NAME"),
 }
+
+# ==========================================
+# CLOUDINARY (stockage images)
+# ==========================================
+CLOUDINARY_CONFIG = {
+    "cloud_name": os.getenv("CLOUDINARY_CLOUD_NAME"),
+    "api_key": os.getenv("CLOUDINARY_API_KEY"),
+    "api_secret": os.getenv("CLOUDINARY_API_SECRET"),
+}
+
+
+# URLS DE L'APPLICATION
+# ==========================================
+# Valeurs par défaut pour le développement local.
+# En production, ces valeurs seront écrasées par les variables d'environnement.
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:5000")

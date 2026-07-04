@@ -1,113 +1,79 @@
-// ============================================
-// MODALE DE CONFIRMATION PERSONNALISÉE
-// ===========================================
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Leyamo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-function afficherConfirmation(titre, message, callback) {
-    // Créer l'overlay
-    const overlay = document.createElement("div");
-    overlay.id = "modal-overlay";
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.6);
-        z-index: 99999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        animation: fadeIn 0.3s ease;
-    `;
+<header>
+    <div class="logo-zone">
+        <img src="logo.webp" alt="Leyamo" class="logo">
+        <h2>Leyamo <span>Dashboard</span></h2>
+    </div>
+    <button onclick="deconnexion()" class="btn-deconnexion">Déconnexion</button>
+</header>
 
-    // Créer la modale
-    const modal = document.createElement("div");
-    modal.style.cssText = `
-        background: white;
-        border-radius: 16px;
-        padding: 30px 32px;
-        max-width: 420px;
-        width: 90%;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        animation: slideUp 0.3s ease;
-        border-top: 5px solid #0f766e;
-    `;
+<div class="dashboard">
 
-    modal.innerHTML = `
-        <h3 style="font-size: 22px; color: #064e3b; margin: 0 0 8px 0;">${titre}</h3>
-        <p style="font-size: 16px; color: #475569; margin: 0 0 24px 0; line-height: 1.6;">${message}</p>
-        <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button id="modal-annuler" style="
-                padding: 10px 24px;
-                border: 2px solid #e2e8f0;
-                border-radius: 50px;
-                background: white;
-                color: #1e293b;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-                font-size: 14px;
-            ">Annuler</button>
-            <button id="modal-confirmer" style="
-                padding: 10px 24px;
-                border: none;
-                border-radius: 50px;
-                background: #dc2626;
-                color: white;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-                font-size: 14px;
-            ">Confirmer</button>
+    <!-- Informations du vendeur -->
+    <div class="card-dashboard">
+        <h3 id="nom-vendeur"></h3>
+        <p id="nom-boutique"></p>
+        <a id="lien-ma-boutique" href="#" target="_blank" style="display:inline-block; margin-top:10px; background:#0f766e; color:white; padding:6px 16px; border-radius:50px; text-decoration:none; font-size:14px;">
+            👁️ Voir ma boutique
+        </a>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="stats">
+        <div class="stat-box">
+            <h2 id="nb-produits">0</h2>
+            <p>Produits</p>
         </div>
-    `;
+        <div class="stat-box">
+            <h2 id="nb-vues">0</h2>
+            <p>Vues</p>
+        </div>
+        <div class="stat-box">
+            <h2 id="nb-clics">0</h2>
+            <p>Clics WhatsApp</p>
+        </div>
+    </div>
 
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    <!-- Ajouter un produit -->
+    <a href="ajouter-produit.html" class="btn">+ Ajouter un produit</a>
 
-    // Gestion des boutons
-    document.getElementById("modal-annuler").addEventListener("click", function() {
-        overlay.remove();
-        if (callback) callback(false);
-    });
+    <!-- Liste des produits -->
+    <h2>Mes Produits</h2>
 
-    document.getElementById("modal-confirmer").addEventListener("click", function() {
-        overlay.remove();
-        if (callback) callback(true);
-    });
+    <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+        <button class="tab-produit active" data-tab="valides" style="padding:8px 20px; border:none; border-radius:50px; background:#0f766e; color:white; cursor:pointer;">✅ Validés</button>
+        <button class="tab-produit" data-tab="refuses" style="padding:8px 20px; border:none; border-radius:50px; background:#e2e8f0; color:#1e293b; cursor:pointer;">❌ Refusés</button>
+    </div>
 
-    // Fermer en cliquant à l'extérieur
-    overlay.addEventListener("click", function(e) {
-        if (e.target === overlay) {
-            overlay.remove();
-            if (callback) callback(false);
-        }
-    });
+    <!-- Conteneurs -->
+    <div id="mes-produits"></div>
+    <div id="mes-produits-refuses" style="display:none;"></div>
 
-    // Animations CSS
-    const style = document.createElement("style");
-    style.textContent = `
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-    `;
-    document.head.appendChild(style);
-}
+    <!-- Supprimer le compte -->
+    <div style="margin-top: 40px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
+        <button onclick="supprimerCompte()" style="background: #dc2626; color: white; border: none; padding: 12px 24px; border-radius: 50px; cursor: pointer; font-weight: 600;">
+            🗑️ Supprimer mon compte
+        </button>
+        <p style="color: #64748b; font-size: 13px; margin-top: 8px;">
+            Cette action est irréversible. Tous vos produits seront supprimés.
+        </p>
+    </div>
 
-function confirmerAction(titre, message) {
-    return new Promise((resolve) => {
-        afficherConfirmation(titre, message, (resultat) => {
-            resolve(resultat);
-        });
-    });
-}
+</div>
 
-// Version simple avec callback (pour les anciennes méthodes)
-function confirmer(titre, message, callback) {
-    afficherConfirmation(titre, message, callback);
-}
+<!-- Scripts -->
+<script src="notifications.js"></script>
+<script src="modal.js"></script>
+<script src="dashboard.js"></script>
+
+</body>
+</html>

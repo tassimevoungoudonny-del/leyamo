@@ -1093,7 +1093,7 @@ def admin_stats():
     signalements_attente = cur.fetchone()['total']
     cur.execute("""
         SELECT DATE_FORMAT(date_creation, '%Y-%m') as mois, SUM(vues) as vues
-        FROM produtos WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        FROM produits WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
         GROUP BY mois ORDER BY mois ASC
     """)
     vues_mois = cur.fetchall()

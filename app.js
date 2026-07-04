@@ -406,25 +406,39 @@ async function signalerProduit(id, nom) {
 // ÉVÉNEMENTS
 // ============================================
 document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll(".filtre-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
+    // --- Délégation pour les catégories ---
+    document.addEventListener("click", function(e) {
+        const btn = e.target.closest(".filtre-btn");
+        if (btn) {
+            console.log("🔵 Clic catégorie :", btn.dataset.categorie);
             document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
-            this.classList.add("active");
-            categorieActuelle = this.dataset.categorie;
+            btn.classList.add("active");
+            categorieActuelle = btn.dataset.categorie;
             chargerProduits(1);
-        });
+        }
     });
-    document.querySelectorAll(".filtre-genre").forEach(btn => {
-        btn.addEventListener("click", function() {
+
+    // --- Délégation pour les genres ---
+    document.addEventListener("click", function(e) {
+        const btn = e.target.closest(".filtre-genre");
+        if (btn) {
+            console.log("🔵 Clic genre :", btn.dataset.genre);
             document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
-            this.classList.add("active");
-            genreActuel = this.dataset.genre;
+            btn.classList.add("active");
+            genreActuel = btn.dataset.genre;
             chargerProduits(1);
+        }
+    });
+
+    // --- Recherche ---
+    const rechercheInput = document.getElementById("recherche");
+    if (rechercheInput) {
+        rechercheInput.addEventListener("keyup", function(e) {
+            if (e.key === "Enter") rechercherProduit(1);
         });
-    });
-    document.getElementById("recherche").addEventListener("keyup", function(e) {
-        if (e.key === "Enter") rechercherProduit(1);
-    });
+    } else {
+        console.error("⚠️ Élément #recherche introuvable");
+    }
 });
 
 window.rechercherProduit = rechercherProduit;

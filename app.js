@@ -1,5 +1,10 @@
+// ============================================
+// API ET VARIABLES GLOBALES
+// ============================================
 const API = "";
-let categorieActuelle = "all", genreActuel = "all", limit = 30;
+let categorieActuelle = "all";
+let genreActuel = "all";
+let limit = 30;
 let vueActuelle = 'grid';
 let prixMin = 0;
 let prixMax = 100000;
@@ -30,12 +35,16 @@ function afficherLoader(actif) {
 function toggleDarkMode() {
     document.body.classList.toggle("dark-mode");
     const btn = document.querySelector(".btn-darkmode");
-    btn.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
+    if (btn) {
+        btn.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
+    }
     localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
 }
+// Restaurer le mode sombre si déjà activé
 if (localStorage.getItem("darkMode") === "true") {
     document.body.classList.add("dark-mode");
-    document.querySelector(".btn-darkmode").textContent = "☀️";
+    const btn = document.querySelector(".btn-darkmode");
+    if (btn) btn.textContent = "☀️";
 }
 
 // ============================================
@@ -62,8 +71,6 @@ reinitialiserTimer();
 // ============================================
 // CHARGEMENT PRODUITS
 // ============================================
-chargerProduits();
-
 function getUrlParams() {
     const params = new URLSearchParams();
     params.set('page', 1);
@@ -81,10 +88,14 @@ async function chargerProduits(page = 1) {
     afficherLoader(true);
     try {
         const reponse = await fetch(`${API}/produits/filtrer?${params}`);
+        if (!reponse.ok) {
+            throw new Error(`Erreur HTTP ${reponse.status}`);
+        }
         const data = await reponse.json();
         afficherProduits(data.data);
         afficherPagination(data.pagination);
     } catch (erreur) {
+        console.error("Erreur chargement produits:", erreur);
         afficherNotification("Erreur de chargement", "error");
     } finally {
         afficherLoader(false);
@@ -100,21 +111,12 @@ async function appliquerFiltres(page = 1) {
 // ============================================
 let autocompleteTimeout;
 
-document.getElementById("recherche").addEventListener("input", function() {
-    const value = this.value.trim();
-    const clearBtn = document.getElementById("clear-search");
-    clearBtn.style.display = value.length > 0 ? "flex" : "none";
-    clearTimeout(autocompleteTimeout);
-    if (value.length >= 2) {
-        autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
-    } else {
-        document.getElementById("autocomplete-list").classList.remove("active");
-    }
-});
+// On attache les événements après le chargement du DOM (voir plus bas)
 
 async function autocomplete(q) {
     try {
         const reponse = await fetch(`${API}/produits/autocomplete?q=${encodeURIComponent(q)}`);
+        if (!reponse.ok) throw new Error('Erreur autocomplete');
         const data = await reponse.json();
         afficherAutocomplete(data.data);
     } catch (erreur) {
@@ -124,6 +126,7 @@ async function autocomplete(q) {
 
 function afficherAutocomplete(resultats) {
     const list = document.getElementById("autocomplete-list");
+    if (!list) return;
     list.innerHTML = "";
     if (!resultats || resultats.length === 0) {
         list.classList.remove("active");
@@ -148,29 +151,28 @@ function afficherAutocomplete(resultats) {
     });
 }
 
-document.addEventListener("click", function(e) {
-    if (!e.target.closest(".search-box")) {
-        document.getElementById("autocomplete-list").classList.remove("active");
-    }
-});
-
 // ============================================
 // RECHERCHE
 // ============================================
 async function rechercherProduit(page = 1) {
-    const motCle = document.getElementById("recherche").value.trim();
+    const input = document.getElementById("recherche");
+    if (!input) return;
+    const motCle = input.value.trim();
     if (!motCle) {
         appliquerFiltres(1);
         return;
     }
     afficherLoader(true);
     try {
-        const reponse = await fetch(`${API}/recherche?q=${motCle}&page=${page}&limit=${limit}`);
+        const reponse = await fetch(`${API}/recherche?q=${encodeURIComponent(motCle)}&page=${page}&limit=${limit}`);
+        if (!reponse.ok) throw new Error('Erreur recherche');
         const data = await reponse.json();
         afficherProduits(data.resultats);
         afficherPagination(data.pagination);
-        document.getElementById("autocomplete-list").classList.remove("active");
+        const list = document.getElementById("autocomplete-list");
+        if (list) list.classList.remove("active");
     } catch (erreur) {
+        console.error(erreur);
         afficherNotification("Erreur lors de la recherche", "error");
     } finally {
         afficherLoader(false);
@@ -178,20 +180,31 @@ async function rechercherProduit(page = 1) {
 }
 
 function reinitialiserRecherche() {
-    document.getElementById("recherche").value = "";
-    document.getElementById("clear-search").style.display = "none";
-    document.getElementById("autocomplete-list").classList.remove("active");
+    const input = document.getElementById("recherche");
+    if (input) {
+        input.value = "";
+    }
+    const clearBtn = document.getElementById("clear-search");
+    if (clearBtn) clearBtn.style.display = "none";
+    const list = document.getElementById("autocomplete-list");
+    if (list) list.classList.remove("active");
     categorieActuelle = "all";
     genreActuel = "all";
     prixMin = 0;
     prixMax = 100000;
-    document.getElementById("prix-min").value = 0;
-    document.getElementById("prix-max").value = 100000;
-    document.getElementById("prix-min-label").textContent = "0";
-    document.getElementById("prix-max-label").textContent = "100 000";
+    const prixMinInput = document.getElementById("prix-min");
+    const prixMaxInput = document.getElementById("prix-max");
+    if (prixMinInput) prixMinInput.value = 0;
+    if (prixMaxInput) prixMaxInput.value = 100000;
+    const minLabel = document.getElementById("prix-min-label");
+    const maxLabel = document.getElementById("prix-max-label");
+    if (minLabel) minLabel.textContent = "0";
+    if (maxLabel) maxLabel.textContent = "100 000";
     document.querySelectorAll(".filtre-btn, .filtre-genre").forEach(b => b.classList.remove("active"));
-    document.querySelector(".filtre-btn[data-categorie='all']")?.classList.add("active");
-    document.querySelector(".filtre-genre[data-genre='all']")?.classList.add("active");
+    const allCat = document.querySelector(".filtre-btn[data-categorie='all']");
+    if (allCat) allCat.classList.add("active");
+    const allGenre = document.querySelector(".filtre-genre[data-genre='all']");
+    if (allGenre) allGenre.classList.add("active");
     appliquerFiltres(1);
     afficherNotification("Tous les produits", "success");
 }
@@ -199,46 +212,24 @@ function reinitialiserRecherche() {
 // ============================================
 // FILTRES PRIX
 // ============================================
-document.getElementById("prix-min").addEventListener("input", function() {
-    prixMin = parseInt(this.value);
-    document.getElementById("prix-min-label").textContent = formaterPrix(prixMin);
-    chargerProduits(1);
-});
-document.getElementById("prix-max").addEventListener("input", function() {
-    prixMax = parseInt(this.value);
-    document.getElementById("prix-max-label").textContent = formaterPrix(prixMax);
-    chargerProduits(1);
-});
+// Les événements sont attachés via délégation (voir plus bas)
 
 // ============================================
 // LIMIT
 // ============================================
-document.getElementById("limit-select").addEventListener("change", function() {
-    limit = parseInt(this.value);
-    chargerProduits(1);
-});
+// Attaché via événement direct (si l'élément existe)
 
 // ============================================
 // VUE GRILLE / LISTE
 // ============================================
-document.getElementById("view-grid").addEventListener("click", function() {
-    vueActuelle = 'grid';
-    document.getElementById("view-grid").classList.add("active");
-    document.getElementById("view-list").classList.remove("active");
-    document.getElementById("liste-produits").classList.remove("liste");
-});
-document.getElementById("view-list").addEventListener("click", function() {
-    vueActuelle = 'list';
-    document.getElementById("view-list").classList.add("active");
-    document.getElementById("view-grid").classList.remove("active");
-    document.getElementById("liste-produits").classList.add("liste");
-});
+// Attaché via événements directs (si les éléments existent)
 
 // ============================================
 // PAGINATION
 // ============================================
 function afficherPagination(pagination) {
     const container = document.getElementById("pagination");
+    if (!container) return;
     container.innerHTML = "";
     if (!pagination || pagination.pages <= 1) return;
     const { page, pages, total } = pagination;
@@ -248,7 +239,7 @@ function afficherPagination(pagination) {
         btn.addEventListener("click", () => rechercherProduit(page - 1));
         container.appendChild(btn);
     }
-    for (let i = Math.max(1,page-2); i <= Math.min(pages,page+2); i++) {
+    for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) {
         const btn = document.createElement("button");
         btn.textContent = i;
         if (i === page) btn.classList.add("active");
@@ -278,6 +269,7 @@ function formaterPrix(prix) {
 // ============================================
 function afficherProduits(produits) {
     const liste = document.getElementById("liste-produits");
+    if (!liste) return;
     liste.innerHTML = "";
     if (!produits || produits.length === 0) {
         liste.innerHTML = `<p style="text-align:center;color:#64748b;padding:40px;">Aucun produit trouvé.</p>`;
@@ -324,6 +316,7 @@ async function quickView(id) {
     afficherLoader(true);
     try {
         const reponse = await fetch(`${API}/produits/${id}`);
+        if (!reponse.ok) throw new Error('Erreur produit');
         const data = await reponse.json();
         const p = data.data;
         afficherLoader(false);
@@ -364,12 +357,13 @@ async function quickView(id) {
         }
         document.getElementById("qv-description").textContent = p.description_produit || "Aucune description";
         document.getElementById("qv-boutique").innerHTML = `🏪 ${p.nom_boutique || 'Boutique'}`;
-        // Avis
         try {
             const avisRep = await fetch(`${API}/produits/${id}/avis`);
-            const avisData = await avisRep.json();
-            const etoiles = "⭐".repeat(Math.round(avisData.moyenne || 0)) + "☆".repeat(5 - Math.round(avisData.moyenne || 0));
-            document.getElementById("qv-avis").innerHTML = `⭐ ${avisData.moyenne ? avisData.moyenne.toFixed(1) : '0'} (${avisData.total || 0} avis) ${etoiles}`;
+            if (avisRep.ok) {
+                const avisData = await avisRep.json();
+                const etoiles = "⭐".repeat(Math.round(avisData.moyenne || 0)) + "☆".repeat(5 - Math.round(avisData.moyenne || 0));
+                document.getElementById("qv-avis").innerHTML = `⭐ ${avisData.moyenne ? avisData.moyenne.toFixed(1) : '0'} (${avisData.total || 0} avis) ${etoiles}`;
+            }
         } catch(e) {}
         overlay.classList.add("active");
     } catch (erreur) {
@@ -379,7 +373,8 @@ async function quickView(id) {
 }
 
 function fermerQuickView() {
-    document.getElementById("quick-view-overlay").classList.remove("active");
+    const overlay = document.getElementById("quick-view-overlay");
+    if (overlay) overlay.classList.remove("active");
 }
 
 // ============================================
@@ -396,20 +391,27 @@ async function signalerProduit(id, nom) {
             body: JSON.stringify({ motif, description })
         });
         const data = await reponse.json();
-        data.status === 'success' ? afficherNotification("✅ Signalement enregistré", "success") : afficherNotification("❌ " + data.message, "error");
+        if (data.status === 'success') {
+            afficherNotification("✅ Signalement enregistré", "success");
+        } else {
+            afficherNotification("❌ " + data.message, "error");
+        }
     } catch (erreur) {
         afficherNotification("Erreur lors du signalement", "error");
     }
 }
 
 // ============================================
-// ÉVÉNEMENTS
+// ATTACHEMENT DES ÉVÉNEMENTS (après DOM)
 // ============================================
 document.addEventListener("DOMContentLoaded", function() {
-    // --- Délégation pour les catégories ---
+    console.log("🔧 Initialisation des événements...");
+
+    // --- Filtres catégories (délégation) ---
     document.addEventListener("click", function(e) {
         const btn = e.target.closest(".filtre-btn");
         if (btn) {
+            e.preventDefault();
             console.log("🔵 Clic catégorie :", btn.dataset.categorie);
             document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
@@ -418,10 +420,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // --- Délégation pour les genres ---
+    // --- Filtres genres (délégation) ---
     document.addEventListener("click", function(e) {
         const btn = e.target.closest(".filtre-genre");
         if (btn) {
+            e.preventDefault();
             console.log("🔵 Clic genre :", btn.dataset.genre);
             document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
@@ -430,21 +433,89 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // --- Recherche ---
+    // --- Input recherche (autocomplétion) ---
     const rechercheInput = document.getElementById("recherche");
     if (rechercheInput) {
+        rechercheInput.addEventListener("input", function() {
+            const value = this.value.trim();
+            const clearBtn = document.getElementById("clear-search");
+            if (clearBtn) clearBtn.style.display = value.length > 0 ? "flex" : "none";
+            clearTimeout(autocompleteTimeout);
+            if (value.length >= 2) {
+                autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
+            } else {
+                const list = document.getElementById("autocomplete-list");
+                if (list) list.classList.remove("active");
+            }
+        });
         rechercheInput.addEventListener("keyup", function(e) {
             if (e.key === "Enter") rechercherProduit(1);
         });
     } else {
         console.error("⚠️ Élément #recherche introuvable");
     }
-});
 
-window.rechercherProduit = rechercherProduit;
-window.reinitialiserRecherche = reinitialiserRecherche;
-window.signalerProduit = signalerProduit;
-window.afficherLoader = afficherLoader;
-window.toggleDarkMode = toggleDarkMode;
-window.quickView = quickView;
-window.fermerQuickView = fermerQuickView;
+    // --- Clic en dehors de la recherche pour fermer l'autocomplete ---
+    document.addEventListener("click", function(e) {
+        if (!e.target.closest(".search-box")) {
+            const list = document.getElementById("autocomplete-list");
+            if (list) list.classList.remove("active");
+        }
+    });
+
+    // --- Filtres prix (sliders) ---
+    const prixMinInput = document.getElementById("prix-min");
+    const prixMaxInput = document.getElementById("prix-max");
+    if (prixMinInput) {
+        prixMinInput.addEventListener("input", function() {
+            prixMin = parseInt(this.value);
+            const label = document.getElementById("prix-min-label");
+            if (label) label.textContent = formaterPrix(prixMin);
+            chargerProduits(1);
+        });
+    }
+    if (prixMaxInput) {
+        prixMaxInput.addEventListener("input", function() {
+            prixMax = parseInt(this.value);
+            const label = document.getElementById("prix-max-label");
+            if (label) label.textContent = formaterPrix(prixMax);
+            chargerProduits(1);
+        });
+    }
+
+    // --- Limite (nombre de produits) ---
+    const limitSelect = document.getElementById("limit-select");
+    if (limitSelect) {
+        limitSelect.addEventListener("change", function() {
+            limit = parseInt(this.value);
+            chargerProduits(1);
+        });
+    }
+
+    // --- Vue grille / liste ---
+    const viewGrid = document.getElementById("view-grid");
+    const viewList = document.getElementById("view-list");
+    if (viewGrid) {
+        viewGrid.addEventListener("click", function() {
+            vueActuelle = 'grid';
+            this.classList.add("active");
+            if (viewList) viewList.classList.remove("active");
+            const liste = document.getElementById("liste-produits");
+            if (liste) liste.classList.remove("liste");
+        });
+    }
+    if (viewList) {
+        viewList.addEventListener("click", function() {
+            vueActuelle = 'list';
+            this.classList.add("active");
+            if (viewGrid) viewGrid.classList.remove("active");
+            const liste = document.getElementById("liste-produits");
+            if (liste) liste.classList.add("liste");
+        });
+    }
+
+    console.log("✅ Tous les événements sont attachés.");
+
+    // Chargement initial des produits
+    chargerProduits();
+});

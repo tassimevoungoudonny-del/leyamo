@@ -4,8 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ajouter Produit - Leyamo</title>
-    <script src="version.js"></script>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}">
 </head>
 <body>
     <div class="login-container">
@@ -53,9 +52,9 @@
     </div>
 
     <!-- Inclusion des scripts -->
-    <script src="notifications.js"></script>
-    <script src="ajouter-produit.js"></script>
-    <script src="back-to-top.js"></script>
-    <script src="form-confirm.js"></script>
+   <script src="/static/notifications.js?v={{ version }}"></script>
+   <script src="/static/produit.js?v={{ version }}"></script>
+   <script src="/static/back-to-top.js?v={{ version }}"></script>
+    <script src="/static/form-confirm.js?v={{ version }}"></script>
 </body>
 </html>

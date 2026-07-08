@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <script src="version.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <!-- OPEN GRAPH -->
     <meta property="og:title" content="{{ titre_og }}" />
     <meta property="og:description" content="{{ description_og }}" />
@@ -15,11 +15,18 @@
     <meta name="twitter:title" content="{{ titre_og }}" />
     <meta name="twitter:description" content="{{ description_og }}" />
     <meta name="twitter:image" content="{{ image_og }}" />
+
     <title>{{ titre_og }} - Leyamo</title>
-    <link rel="stylesheet" href="/style.css">
+
+    <!-- CSS avec versionnage -->
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+
+    <!-- Version.js (pour les fichiers statiques) -->
+    <script src="/static/version.js?v={{ version }}"></script>
 </head>
 <body>
 <div class="fiche-produit">
+    <!-- Galerie -->
     <div id="galerie">
         <img id="image-principale" src="{{ image_og }}" alt="Photo du produit">
         <div id="miniatures">
@@ -28,33 +35,99 @@
             {% endfor %}
         </div>
     </div>
+
     <h1 id="nom">{{ produit.nom_produit }}</h1>
-    <p id="prix">{{ produit.prix }} FCFA</p>
+
+    <div id="prix">
+        {% if produit.promotion and produit.promotion > 0 %}
+            <span class="prix-barre">{{ produit.prix }} FCFA</span>
+            <span class="prix">{{ (produit.prix * (1 - produit.promotion / 100))|int }} FCFA</span>
+            <span class="badge-promo">-{{ produit.promotion }}%</span>
+        {% else %}
+            <span class="prix">{{ produit.prix }} FCFA</span>
+        {% endif %}
+    </div>
+
     <p id="categorie">{{ produit.categorie }}</p>
-    <p id="description">{{ produit.description_produit }}</p>
+    <p id="description">{{ produit.description_produit or 'Aucune description' }}</p>
     <p id="localisation">📍 <span>{{ produit.localisation_detaillee or produit.localisation_boutique or 'Non renseigné' }}</span></p>
     <p id="vues">👁 {{ produit.vues or 0 }} vues</p>
-    <h3 id="boutique">🏪 {{ produit.nom_boutique or 'Boutique' }}</h3>
+
+    <h3 id="boutique">
+        🏪 {{ produit.nom_boutique or 'Boutique' }}
+        <a id="lien-boutique" href="/boutique?id={{ produit.id_vendeur }}" target="_blank" style="font-size:14px; color:#0f766e; text-decoration:underline; margin-left:10px;">
+            Voir la boutique
+        </a>
+    </h3>
+
+    <!-- Partage social -->
+    <div class="share-buttons">
+        <button class="share-whatsapp" onclick="partagerWhatsApp()">📱 WhatsApp</button>
+        <button class="share-facebook" onclick="partagerFacebook()">📘 Facebook</button>
+        <button class="share-copy" onclick="copierLien()">📋 Copier le lien</button>
+    </div>
+
+    <!-- Bouton Commander -->
     <button id="btn-whatsapp" onclick="commander()">Commander sur WhatsApp</button>
+
+    <!-- Suivre la chaîne -->
+    <p style="text-align:center;margin-top:8px;font-size:12px;">
+        <a href="https://whatsapp.com/channel/0029VbD41M8L2ATxlMRmo900" target="_blank" style="color:#0f766e;text-decoration:underline;">
+            📢 Suivre notre chaîne WhatsApp
+        </a>
+    </p>
+
+    <!-- Avis -->
+    <div id="avis-section" class="avis-section"></div>
 </div>
+
+<!-- ========================================== -->
+<!-- SCRIPTS AVEC VERSIONNAGE                    -->
+<!-- ========================================== -->
 <script>
-function changeImage(img) {
-    document.getElementById("image-principale").src = img.src;
-    document.querySelectorAll("#miniatures img").forEach(i => i.className = "");
-    img.className = "active";
-}
-function commander() {
-    const num = "{{ produit.num_whatsapp }}";
-    const nom = "{{ produit.nom_produit }}";
-    const prix = "{{ produit.prix }}";
-    const url = "{{ url_og }}";
-    const message = encodeURIComponent(
-        `Bonjour,\n\nJe viens de voir votre produit sur Leyamo (la marketplace africaine) :\n\n📦 ${nom}\n💰 ${prix} FCFA\n\n🔗 Lien du produit : ${url}\n\nPouvez-vous me donner plus d'informations ?\n\nMerci.`
-    );
-    window.open(`https://wa.me/237${num}?text=${message}`, "_blank");
-}
+    // Fonction pour changer l'image principale
+    function changeImage(img) {
+        document.getElementById("image-principale").src = img.src;
+        document.querySelectorAll("#miniatures img").forEach(i => i.className = "");
+        img.className = "active";
+    }
+
+    // Fonction Commander sur WhatsApp
+    function commander() {
+        const num = "{{ produit.num_whatsapp or '' }}";
+        const nom = "{{ produit.nom_produit }}";
+        const prix = "{{ produit.prix }}";
+        const url = "{{ url_og }}";
+        const message = encodeURIComponent(
+            `Bonjour,\n\nJe viens de voir votre produit sur Leyamo (la marketplace africaine) :\n\n📦 ${nom}\n💰 ${prix} FCFA\n\n🔗 Lien du produit : ${url}\n\nPouvez-vous me donner plus d'informations ?\n\nMerci.`
+        );
+        window.open(`https://wa.me/237${num}?text=${message}`, "_blank");
+    }
+
+    // Partager sur WhatsApp
+    function partagerWhatsApp() {
+        const url = encodeURIComponent(window.location.href);
+        const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
+        window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
+    }
+
+    // Partager sur Facebook
+    function partagerFacebook() {
+        const url = encodeURIComponent(window.location.href);
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
+    }
+
+    // Copier le lien
+    function copierLien() {
+        navigator.clipboard.writeText(window.location.href)
+            .then(() => afficherNotification("✅ Lien copié !", "success"))
+            .catch(() => afficherNotification("❌ Erreur", "error"));
+    }
 </script>
-<script src="/notifications.js"></script>
-<script src="back-to-top.js"></script>
+
+<!-- Scripts avec versionnage -->
+<script src="/static/produit.js?v={{ version }}"></script>
+<script src="/static/notifications.js?v={{ version }}"></script>
+<script src="/static/back-to-top.js?v={{ version }}"></script>
 </body>
 </html>

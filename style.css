@@ -1637,6 +1637,120 @@ body.dark-mode #modal-overlay .modal-actions .btn-annuler:hover {
 }
 
 /* ============================================
+   BOUTON RETOUR EN HAUT
+   ============================================ */
+.back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: #0f766e;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 26px;
+    line-height: 1;
+    display: none;  /* caché par défaut */
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    z-index: 999;
+    transition: opacity 0.3s, transform 0.2s;
+    padding: 0;
+    user-select: none;
+}
+
+.back-to-top.show {
+    display: flex;
+}
+
+.back-to-top:hover {
+    background: #0d5f57;
+    transform: scale(1.05);
+}
+
+.back-to-top:active {
+    transform: scale(0.95);
+}
+
+/* Sur mobile, on peut le réduire un peu si besoin */
+@media (max-width: 480px) {
+    .back-to-top {
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+/* Mode sombre : garder le même contraste */
+body.dark-mode .back-to-top {
+    background: #0f766e;
+    color: white;
+}
+body.dark-mode .back-to-top:hover {
+    background: #0d5f57;
+}
+
+
+/* ============================================
+   MESSAGE DE BIENVENUE
+   ============================================ */
+#bienvenue-container {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #0f766e;
+    position: relative;
+    animation: fadeInUp 0.6s ease;
+}
+
+.bienvenue-texte {
+    font-size: 18px;
+    color: #064e3b;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.bienvenue-close {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #064e3b;
+    padding: 0 6px;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+.bienvenue-close:hover {
+    opacity: 1;
+}
+
+/* Mode sombre */
+body.dark-mode #bienvenue-container {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border-color: #a7f3d0;
+}
+body.dark-mode .bienvenue-texte {
+    color: #a7f3d0;
+}
+body.dark-mode .bienvenue-close {
+    color: #a7f3d0;
+}
+
+/* Masquer après fermeture */
+#bienvenue-container.cache {
+    display: none;
+}
+/* ============================================
    DESKTOP
    ============================================ */
 @media (min-width: 768px) {
@@ -1742,4 +1856,14 @@ body.dark-mode #modal-overlay .modal-actions .btn-annuler:hover {
     .grille-produits {
         grid-template-columns: repeat(4, 1fr);
     }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }

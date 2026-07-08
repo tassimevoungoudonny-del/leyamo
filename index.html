@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leyamo Store</title>
+    <script src="version.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,6 +22,15 @@
 </header>
 <section class="hero">
     <h1>Trouvez les meilleurs produits près de chez vous</h1>
+    <div id="bienvenue-container">
+    <p id="message-bienvenue" class="bienvenue-texte">
+        👋 Bienvenue sur Leyamo !<br>
+        <span style="font-size:14px; font-weight:400;">
+            La marketplace africaine qui connecte acheteurs et vendeurs locaux.
+        </span>
+    </p>
+    <button onclick="fermerBienvenue()" class="bienvenue-close">✕</button>
+</div>
     <div class="search-box">
         <div class="search-input-wrapper">
             <input type="text" id="recherche" placeholder="Rechercher un produit...">
@@ -87,5 +97,8 @@
 </footer>
 <script src="notifications.js"></script>
 <script src="app.js"></script>
+<script src="back-to-top.js"></script>
+<script src="bienvenue.js"></script>
+<script src="banniere.js"></script>
 </body>
 </html>

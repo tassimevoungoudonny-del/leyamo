@@ -557,7 +557,125 @@ function adminDeconnexion() {
     afficherNotification("Déconnexion admin", "success");
     setTimeout(() => { window.location.href = "admin-connexion.html"; }, 300);
 }
+// ============================================
+// MODAL DE PUBLICATION (Admin)
+// ============================================
+function ouvrirModalPublication(id, nom, prix, categorie, image) {
+    // Créer le modal
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-publication';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 100000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    `;
 
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 30px 32px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+    `;
+
+    const prixFormate = new Intl.NumberFormat('fr-FR').format(prix);
+    const lien = `${window.location.origin}/produit/${id}`;
+    const imageUrl = image || '';
+
+    modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="color:#064e3b;margin:0;">📢 Publier le produit</h3>
+            <button onclick="fermerModalPublication()" style="background:transparent;border:none;font-size:24px;cursor:pointer;">✕</button>
+        </div>
+        
+        ${imageUrl ? `<img src="${imageUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">` : ''}
+        
+        <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:16px;">
+            <p style="margin:0;font-weight:600;">${nom}</p>
+            <p style="margin:4px 0;color:#0f766e;font-weight:600;">${prixFormate} FCFA</p>
+            <p style="margin:0;font-size:13px;color:#64748b;">🏷️ ${categorie}</p>
+            <p style="margin:0;font-size:13px;color:#64748b;">🔗 ${lien}</p>
+        </div>
+
+        <label style="font-weight:600;display:block;margin-bottom:4px;">Plateforme</label>
+        <select id="plateforme-publier-modal" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">
+            <option value="whatsapp">📱 WhatsApp</option>
+            <option value="facebook">📘 Facebook</option>
+            <option value="twitter">🐦 Twitter/X</option>
+        </select>
+
+        <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé</label>
+        <textarea id="message-publier-modal" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${categorie}\n🔗 ${lien}</textarea>
+
+        <div style="display:flex;gap:10px;">
+            <button onclick="publierDepuisModal(${id})" style="flex:1;background:#25D366;color:white;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">📤 Publier</button>
+            <button onclick="fermerModalPublication()" style="flex:1;background:#e2e8f0;color:#1e293b;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">Annuler</button>
+        </div>
+        <div id="resultat-publication-modal" style="margin-top:12px;text-align:center;"></div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+// Fermer le modal
+function fermerModalPublication() {
+    const modal = document.getElementById('modal-publication');
+    if (modal) modal.remove();
+}
+
+// Publier depuis le modal
+async function publierDepuisModal(produitId) {
+    const plateforme = document.getElementById('plateforme-publier-modal').value;
+    const message = document.getElementById('message-publier-modal').value.trim();
+    const resultatDiv = document.getElementById('resultat-publication-modal');
+
+    if (!message) {
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">⚠️ Veuillez saisir un message</span>';
+        return;
+    }
+
+    try {
+        const reponse = await fetch(`${API}/admin/produits/${produitId}/publier`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            },
+            body: JSON.stringify({ plateforme, message })
+        });
+        const data = await reponse.json();
+
+        if (data.url) {
+            resultatDiv.innerHTML = `
+                <a href="${data.url}" target="_blank" style="color:#0f766e;text-decoration:underline;font-weight:600;">
+                    🔗 Ouvrir sur ${plateforme.charAt(0).toUpperCase() + plateforme.slice(1)}
+                </a>
+                <br><small style="color:#64748b;">✅ Lien généré avec succès</small>
+            `;
+            afficherNotification("✅ URL générée pour " + plateforme, "success");
+        } else {
+            resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${data.message || 'Erreur'}</span>`;
+        }
+    } catch (e) {
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">❌ Erreur réseau</span>';
+        afficherNotification("Erreur lors de la publication", "error");
+    }
+}
 window.validerVendeur = validerVendeur;
 window.refuserVendeur = refuserVendeur;
 window.validerProduit = validerProduit;

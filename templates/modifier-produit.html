@@ -2,7 +2,7 @@
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Modifier Produit - Leyamo</title>
     <script src="version.js"></script>
-   <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
 <body>
 <div class="login-container">
     <div class="login-box">
@@ -17,9 +17,9 @@
         <p id="message"></p>
     </div>
 </div>
-<script src="/static/modifier-produit.js?v={{ version }}"></script>
-<script src="/static/notifications.js?v={{ version }}"></script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
-<script src="form-confirm.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='modifier-produit.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
 </body>
 </html>

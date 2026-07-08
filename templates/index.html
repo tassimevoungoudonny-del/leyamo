@@ -94,11 +94,11 @@
         <a href="mailto:leyamocontact@gmail.com" style="color: #a7f3d0; text-decoration: underline;">Contact</a>
     </p>
 </footer>
-<script src="/static/notifications.js?v={{ version }}"></script>
-<script src="/static/version.js?v={{ version }}"></script>
-<script src="/static/app.js?v={{ version }}"></script>
-<script src="/static/banniere.js?v={{ version }}"></script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
-<script src="/static/bienvenue.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
+    <script src="{{ url_for('static', filename='app.js') }}?v={{ version }}"></script>
+    <script src="{{ url_for('static', filename='banniere.js') }}?v={{ version }}"></script>
+    <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+    <script src="{{ url_for('static', filename='bienvenue.js') }}?v={{ version }}"></script>
+    <script src="{{ url_for('static', filename='sondage.js') }}?v={{ version }}"></script>
 </body>
 </html>

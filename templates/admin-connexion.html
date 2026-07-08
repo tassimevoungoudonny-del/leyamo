@@ -45,8 +45,8 @@ async function adminLogin() {
     }
 }
 </script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
-<script src="/static/form-confirm.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
 
 </body>
 

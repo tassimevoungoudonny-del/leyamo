@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Boutique - Leyamo</title>
-    <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
 <body>
 <header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Store</span></h2></div><nav><a href="index.html">Accueil</a><a href="connexion.html">Connexion</a><a href="inscription.html">Inscription</a></nav></header>
 <div style="padding:30px;max-width:1200px;margin:0 auto;">
@@ -10,7 +10,7 @@
     </div>
     <h2>Produits</h2><div id="produits-boutique" class="grille-produits"></div>
 </div>
-<script src="/static/notifications.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
 <script>
 const API = "";
 const id = new URLSearchParams(window.location.search).get("id");
@@ -44,6 +44,6 @@ async function chargerBoutique() {
     }
 }
 </script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
 </body>
 </html>

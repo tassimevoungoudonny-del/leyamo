@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Inscription - Leyamo</title>
-    <script src="version.js"></script>
-    <link rel="stylesheet" href="style.css"></head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
 <body>
 <div class="login-container">
     <div class="login-box">
@@ -19,9 +18,9 @@
         <p style="text-align:center;margin-top:15px;">Déjà un compte ? <a href="connexion.html" style="color:#0f766e;text-decoration:none;">Connectez-vous</a></p>
     </div>
 </div>
-</script><script src="/static/inscription.js?v={{ version }}"></script>
-<script src="/static/notifications.js?v={{ version }}"></script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
-<script src="form-confirm.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='inscription.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Leyamo</title>
   
-<link rel="stylesheet" href="/static/style.css?v={{ version }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
 </head>
 <body>
 
@@ -154,10 +154,10 @@ function confirmerAction(titre, message) {
         });
     });
 }
-</script>
 
-<script src="/static/dashboard.js?v={{ version }}"></script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+
 
 </body>
 </html>

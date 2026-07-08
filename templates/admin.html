@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin - Leyamo</title>>
-   <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
 <body>
 <header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Admin</span></h2></div><button onclick="adminDeconnexion()" class="btn-deconnexion">Déconnexion</button></header>
 <div class="dashboard" style="max-width:1400px;">
@@ -52,8 +52,8 @@
         <div id="liste-attente" style="display:none;"></div>
     </div>
 </div>
-<script src="/static/admin.js?v={{ version }}"></script>
-<script src="/static/modal.js?v={{ version }}"></script>
-<script src="/static/back-to-top.js?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='admin.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='modal.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
 </body>
 </html>

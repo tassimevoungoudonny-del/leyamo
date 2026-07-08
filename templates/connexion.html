@@ -38,10 +38,10 @@ function ouvrirResetPassword() {
         .catch(() => afficherNotification("Erreur réseau", "error"));
     }
 }
-
-<script src="{{ url_for('static', filename='connexion.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
+</script>
+ <script src="{{ url_for('static', filename='connexion.js') }}?v={{ version }}"></script>
+ <script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
+ <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+ <script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
 </body>
 </html>

@@ -77,21 +77,48 @@ function getUrlParams() {
 }
 
 async function chargerProduits(page = 1) {
+    // 1. Désactiver les boutons de filtre pendant le chargement
+    const filtres = document.querySelectorAll('.filtre-btn, .filtre-genre');
+    filtres.forEach(btn => btn.disabled = true);
+
+    // 2. Construire les paramètres de l'URL
     const params = getUrlParams();
     params.set('page', page);
     const url = `${API}/produits/filtrer?${params}`;
     console.log("🔍 Appel API :", url);
+
+    // 3. Afficher le loader
     afficherLoader(true);
+
     try {
+        // 4. Requête vers l'API
         const reponse = await fetch(url);
         const data = await reponse.json();
         console.log("✅ Données reçues :", data);
+
+        // 5. Afficher les produits et la pagination
         afficherProduits(data.data);
         afficherPagination(data.pagination);
+
+        // 6. Mettre à jour le compteur de produits
+        const compteur = document.getElementById("compteur-produits");
+        if (compteur) {
+            const total = data.pagination?.total || 0;
+            const message = total === 0 ? "Aucun produit trouvé" :
+                            total === 1 ? "1 produit trouvé" :
+                            `${total} produits trouvés`;
+            compteur.textContent = message;
+        }
+
     } catch (erreur) {
         console.error("❌ Erreur :", erreur);
         afficherNotification("Erreur de chargement", "error");
+        // En cas d'erreur, on peut aussi vider le compteur
+        const compteur = document.getElementById("compteur-produits");
+        if (compteur) compteur.textContent = "Erreur de chargement";
     } finally {
+        // 7. Réactiver les boutons de filtre et cacher le loader
+        filtres.forEach(btn => btn.disabled = false);
         afficherLoader(false);
     }
 }

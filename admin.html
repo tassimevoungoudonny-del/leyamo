@@ -33,6 +33,7 @@
         <button class="tab-btn" data-tab="signalements" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">🚨 Signalements</button>
         <button class="tab-btn" data-tab="publier" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">📢 Publier</button>
         <button class="tab-btn" data-tab="logs" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">📋 Logs</button>
+        <button class="tab-btn" data-tab="attente" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">⏳ En attente</button>
     </div>
     <!-- FILTRES PRODUITS -->
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
@@ -47,6 +48,7 @@
         <div id="liste-signalements" style="display:none;"><div style="background:white;padding:20px;border-radius:16px;"><h3>🚨 Signalements en attente</h3><div id="signalements-liste"></div></div></div>
         <div id="publier-produit" style="display:none;"><div style="background:white;padding:30px;border-radius:16px;max-width:600px;"><h3>📢 Publier un produit</h3><label>Produit</label><select id="produit-publier" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:12px;margin-bottom:15px;"></select><label>Plateforme</label><select id="plateforme-publier" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:12px;margin-bottom:15px;"><option value="whatsapp">WhatsApp</option><option value="facebook">Facebook</option></select><label>Message</label><textarea id="message-publier" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:12px;min-height:100px;margin-bottom:15px;"></textarea><button onclick="publierProduit()" style="background:#0f766e;color:white;border:none;padding:12px 24px;border-radius:50px;cursor:pointer;font-weight:600;">Publier</button><div id="resultat-publication"></div></div></div>
         <div id="logs" style="display:none;"><div style="background:white;padding:20px;border-radius:16px;overflow-x:auto;"><h3>📋 Journal des actions</h3><div id="liste-logs"></div><div id="pagination-logs" style="display:flex;justify-content:center;gap:8px;margin-top:20px;flex-wrap:wrap;"></div></div></div>
+        <div id="liste-attente" style="display:none;"></div>
     </div>
 </div>
 <script src="admin.js"></script><script src="notifications.js"></script>

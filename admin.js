@@ -284,18 +284,66 @@ async function chargerSignalements() {
 function afficherSignalements(signalements) {
     const c = document.getElementById("signalements-liste");
     c.innerHTML = "";
-    if (!signalements || signalements.length === 0) { c.innerHTML = "<p style='color:#64748b;'>✅ Aucun signalement</p>"; return; }
+    if (!signalements || signalements.length === 0) {
+        c.innerHTML = "<p style='color:#64748b;'>✅ Aucun signalement</p>";
+        return;
+    }
     signalements.forEach(s => {
+        const image = s.image_url || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-size='12' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
         c.innerHTML += `
             <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9;align-items:center;flex-wrap:wrap;">
-                <span style="font-weight:600;min-width:120px;">📦 ${s.nom_produit}</span>
-                <span style="color:#dc2626;font-weight:600;">${s.motif}</span>
-                <span style="color:#64748b;font-size:13px;">${s.description || ''}</span>
-                <span style="color:#94a3b8;font-size:12px;margin-left:auto;">${new Date(s.date_creation).toLocaleString('fr-FR')}</span>
-                <button onclick="traiterSignalement(${s.id})" style="background:#0f766e;color:white;border:none;padding:4px 14px;border-radius:50px;cursor:pointer;font-size:12px;">✅ Traiter</button>
+                <img src="${image}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;">
+                <div style="flex:2;min-width:150px;">
+                    <strong>${s.nom_produit}</strong>
+                    <span style="display:block;color:#dc2626;font-weight:600;">${s.motif}</span>
+                    <span style="color:#64748b;font-size:13px;">${s.description || ''}</span>
+                </div>
+                <span style="color:#94a3b8;font-size:12px;">${new Date(s.date_creation).toLocaleString('fr-FR')}</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <a href="/produit/${s.produit_id}" target="_blank" style="background:#0f766e;color:white;padding:4px 12px;border-radius:50px;text-decoration:none;font-size:12px;">👁️ Voir</a>
+                    <button onclick="validerProduitDepuisSignalement(${s.produit_id}, ${s.id})" style="background:#16a34a;color:white;border:none;padding:4px 14px;border-radius:50px;cursor:pointer;font-size:12px;">✅ Valider</button>
+                    <button onclick="supprimerProduitDepuisSignalement(${s.produit_id}, ${s.id})" style="background:#dc2626;color:white;border:none;padding:4px 14px;border-radius:50px;cursor:pointer;font-size:12px;">🗑️ Supprimer</button>
+                </div>
             </div>
         `;
     });
+}
+
+async function validerProduitDepuisSignalement(produitId, signalementId) {
+    const ok = await confirmerAction("✅ Valider le produit", "Voulez-vous valider ce produit et marquer le signalement comme traité ?");
+    if (!ok) return;
+    try {
+        await fetch(`${API}/admin/produits/${produitId}/valider`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "Authorization": token, "X-CSRF-Token": csrf_token },
+            body: JSON.stringify({ statut: 'valide' })
+        });
+        await fetch(`${API}/admin/signalements/${signalementId}/traiter`, {
+            method: "PUT",
+            headers: { "Authorization": token, "X-CSRF-Token": csrf_token }
+        });
+        afficherNotification("✅ Produit validé et signalement traité", "success");
+        chargerSignalements();
+        chargerStats();
+    } catch (e) { afficherNotification("Erreur", "error"); }
+}
+
+async function supprimerProduitDepuisSignalement(produitId, signalementId) {
+    const ok = await confirmerAction("🗑️ Supprimer le produit", "Voulez-vous supprimer définitivement ce produit et marquer le signalement comme traité ?");
+    if (!ok) return;
+    try {
+        await fetch(`${API}/produits/${produitId}`, {
+            method: "DELETE",
+            headers: { "Authorization": token, "X-CSRF-Token": csrf_token }
+        });
+        await fetch(`${API}/admin/signalements/${signalementId}/traiter`, {
+            method: "PUT",
+            headers: { "Authorization": token, "X-CSRF-Token": csrf_token }
+        });
+        afficherNotification("🗑️ Produit supprimé et signalement traité", "success");
+        chargerSignalements();
+        chargerStats();
+    } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
 async function traiterSignalement(id) {
@@ -314,32 +362,68 @@ async function traiterSignalement(id) {
 // ---------- PUBLIER ----------
 async function chargerProduitsPourPublication() {
     try {
-        const reponse = await fetch(`${API}/admin/produits?filtre=recent&limit=100`, { headers: { "Authorization": token } });
+        const reponse = await fetch(`${API}/admin/produits?filtre=recent&limit=100`, {
+            headers: { "Authorization": token }
+        });
         const data = await reponse.json();
         const select = document.getElementById("produit-publier");
         select.innerHTML = "";
+
+        if (!data.data || data.data.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Aucun produit disponible";
+            select.appendChild(opt);
+            return;
+        }
+
         data.data.forEach(p => {
             const opt = document.createElement("option");
             opt.value = p.id;
+            // Affichage dans la liste déroulante
             opt.textContent = `${p.nom_produit} - ${p.prix} FCFA`;
+            // Stockage des données supplémentaires dans des attributs data-*
+            opt.dataset.prix = p.prix;
+            opt.dataset.localisation = p.localisation_boutique || p.localisation || 'Localisation non renseignée';
+            opt.dataset.image = p.image_url || '';
+            opt.dataset.nom = p.nom_produit;
             select.appendChild(opt);
         });
-    } catch (e) {}
+    } catch (e) {
+        console.error("Erreur chargement produits pour publication", e);
+        afficherNotification("Erreur lors du chargement des produits", "error");
+    }
 }
 
 async function publierProduit() {
-    const produitId = document.getElementById("produit-publier").value;
+    const select = document.getElementById("produit-publier");
+    const selectedOption = select.options[select.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        afficherNotification("Sélectionnez un produit", "error");
+        return;
+    }
+
+    const produitId = selectedOption.value;
+    const nom = selectedOption.dataset.nom || 'Produit';
+    const prix = selectedOption.dataset.prix || '';
+    const localisation = selectedOption.dataset.localisation || '';
+    const image = selectedOption.dataset.image || '';
+
     const plateforme = document.getElementById("plateforme-publier").value;
     let message = document.getElementById("message-publier").value.trim();
-    if (!produitId) { afficherNotification("Sélectionnez un produit", "error"); return; }
+
+    // Si l'utilisateur n'a pas écrit de message, on génère un message par défaut
     if (!message) {
-        message = `🔥 Découvrez ce produit sur Leyamo !\n\n${window.location.origin}/produit/${produitId}`;
+        message = `🔥 Découvrez ${nom} sur Leyamo !\n\n💰 ${prix} FCFA\n📍 ${localisation}\n🔗 ${window.location.origin}/produit/${produitId}`;
     } else {
+        // On ajoute le lien s'il n'est pas déjà présent
         const lien = `${window.location.origin}/produit/${produitId}`;
         if (!message.includes(lien)) {
             message += `\n\n🔗 Lien : ${lien}`;
         }
     }
+
+    // Appel à l'API pour obtenir l'URL de partage
     try {
         const reponse = await fetch(`${API}/admin/produits/${produitId}/publier`, {
             method: "POST",
@@ -353,7 +437,9 @@ async function publierProduit() {
         const data = await reponse.json();
         afficherNotification("✅ URL générée", "success");
         document.getElementById("resultat-publication").innerHTML = `<a href="${data.url}" target="_blank" style="color:#0f766e;text-decoration:underline;">🔗 Ouvrir ${plateforme}</a>`;
-    } catch (e) { afficherNotification("Erreur", "error"); }
+    } catch (e) {
+        afficherNotification("Erreur lors de la publication", "error");
+    }
 }
 
 // ---------- LOGS ----------
@@ -374,6 +460,15 @@ function afficherLogs(logs) {
     logs.forEach(log => {
         c.innerHTML += `<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;flex-wrap:wrap;"><span style="color:#64748b;min-width:160px;">${new Date(log.date_creation).toLocaleString('fr-FR')}</span><span style="font-weight:600;min-width:120px;">${log.action}</span><span style="color:#475569;">${log.details || ''}</span>${log.ip ? `<span style="color:#94a3b8;margin-left:auto;">IP: ${log.ip}</span>` : ''}</div>`;
     });
+}
+async function chargerAttente() {
+    try {
+        const reponse = await fetch(`${API}/admin/produits?filtre=recent&statut=en_attente`, {
+            headers: { "Authorization": token }
+        });
+        const data = await reponse.json();
+        afficherProduitsAdmin(data.data); // réutilise la même fonction d’affichage
+    } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
 function afficherPaginationLogs(pagination) {
@@ -423,13 +518,14 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("liste-signalements").style.display = tab === 'signalements' ? 'block' : 'none';
             document.getElementById("publier-produit").style.display = tab === 'publier' ? 'block' : 'none';
             document.getElementById("logs").style.display = tab === 'logs' ? 'block' : 'none';
-
+            document.getElementById("liste-attente").style.display = tab === 'attente' ? 'block' : 'none';
             // Recharger les données à chaque clic
             if (tab === 'vendeurs') chargerVendeurs();
             if (tab === 'produits') chargerProduits(filtreActuel);
             if (tab === 'signalements') chargerSignalements();
             if (tab === 'publier') chargerProduitsPourPublication();
             if (tab === 'logs') chargerLogs(1);
+            if (tab === 'attente') chargerAttente();
         });
     });
 

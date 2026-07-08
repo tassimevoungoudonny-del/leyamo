@@ -784,6 +784,7 @@ def modifier_produit(id):
             data.get('image_url'),
             id
         ))
+        cur.execute("UPDATE produits SET statut = 'en_attente' WHERE id = %s", (id,))
         conn.commit()
         invalidate_product_cache()
         log_action("modification_produit", f"Produit ID: {id}", request.remote_addr)
@@ -1246,12 +1247,12 @@ def admin_signalements():
     conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("""
-        SELECT s.*, p.nom_produit
-        FROM signalements s
-        JOIN produits p ON s.produit_id = p.id
-        WHERE s.statut = 'en_attente'
-        ORDER BY s.date_creation DESC
-    """)
+    SELECT s.*, p.nom_produit, p.image_url, p.id as produit_id
+    FROM signalements s
+    JOIN produits p ON s.produit_id = p.id
+    WHERE s.statut = 'en_attente'
+    ORDER BY s.date_creation DESC
+""")
     signalements = cur.fetchall()
     cur.close()
     conn.close()

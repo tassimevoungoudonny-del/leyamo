@@ -10,7 +10,6 @@ async function chargerProduit() {
         const p = data.data;
         document.getElementById("nom").innerHTML = p.nom_produit;
 
-        // Prix formaté avec promotion
         const prixFormate = new Intl.NumberFormat('fr-FR').format(p.prix);
         const promotion = p.promotion || 0;
         let prixHtml = `${prixFormate} FCFA`;
@@ -29,18 +28,16 @@ async function chargerProduit() {
         document.getElementById("lieu").innerHTML = p.localisation_detaillee || p.localisation_boutique || "Non renseigné";
         document.getElementById("vues").innerHTML = `👁 ${p.vues || 0} vues`;
 
-        // Boutique
         const boutiqueNom = p.nom_boutique || "Boutique";
         document.getElementById("nom-boutique").innerHTML = boutiqueNom;
         const lienBoutique = document.getElementById("lien-boutique");
         if (p.id_vendeur) {
-            lienBoutique.href = `boutique.html?id=${p.id_vendeur}`;
+            lienBoutique.href = `/boutique?id=${p.id_vendeur}`;
             lienBoutique.style.display = "inline";
         } else {
             lienBoutique.style.display = "none";
         }
 
-        // Galerie
         const images = p.images || [];
         const principale = document.getElementById("image-principale");
         const miniaturesDiv = document.getElementById("miniatures");
@@ -62,13 +59,11 @@ async function chargerProduit() {
             principale.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='28' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
         }
 
-        // WhatsApp
         document.getElementById("btn-whatsapp").onclick = () => {
             enregistrerClic();
             window.open(`https://wa.me/237${p.num_whatsapp}?text=${encodeURIComponent(`Bonjour, intéressé par ${p.nom_produit}`)}`, "_blank");
         };
 
-        // Avis
         chargerAvis(id);
 
     } catch (erreur) {
@@ -80,9 +75,6 @@ async function enregistrerClic() {
     try { await fetch(`${API}/produits/${id}/whatsapp`, { method: "POST" }); } catch (e) {}
 }
 
-// ============================================
-// PARTAGE SOCIAL
-// ============================================
 function partagerWhatsApp() {
     const url = encodeURIComponent(window.location.href);
     const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n${document.getElementById("nom").textContent}\n💰 ${document.getElementById("prix").textContent}`);
@@ -102,9 +94,6 @@ function copierLien() {
     });
 }
 
-// ============================================
-// AVIS
-// ============================================
 async function chargerAvis(produitId) {
     try {
         const reponse = await fetch(`${API}/produits/${produitId}/avis`);

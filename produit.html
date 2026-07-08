@@ -14,16 +14,14 @@
     <meta name="twitter:description" content="{{ description_og }}" />
     <meta name="twitter:image" content="{{ image_og }}" />
     <title>{{ titre_og }} - Leyamo</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="fiche-produit">
     <div id="galerie">
         <img id="image-principale" src="{{ image_og }}" alt="Photo du produit">
         <div id="miniatures">
-            {% for img in produit.images %}
-                <img src="{{ img }}" class="{% if loop.index0 == 0 %}active{% endif %}" onclick="changeImage(this)">
-            {% endfor %}
+            <!-- Généré par le serveur -->
         </div>
     </div>
     <h1 id="nom">{{ produit.nom_produit }}</h1>
@@ -38,10 +36,10 @@
     </div>
     <p id="categorie">{{ produit.categorie }}</p>
     <p id="description">{{ produit.description_produit or 'Aucune description' }}</p>
-    <p id="localisation">📍 <span>{{ produit.localisation_detaillee or produit.localisation_boutique or 'Non renseigné' }}</span></p>
+    <p id="localisation">📍 <span>{{ produit.localisation_detaillee or produit.localisation_boutique or "Non renseigné" }}</span></p>
     <p id="vues">👁 {{ produit.vues or 0 }} vues</p>
     <h3 id="boutique">
-        🏪 {{ produit.nom_boutique or 'Boutique' }}
+        🏪 {{ produit.nom_boutique or "Boutique" }}
         <a id="lien-boutique" href="/boutique?id={{ produit.id_vendeur }}" target="_blank" style="font-size:14px; color:#0f766e; text-decoration:underline; margin-left:10px;">Voir la boutique</a>
     </h3>
     <div class="share-buttons">
@@ -87,8 +85,8 @@
             .catch(() => afficherNotification("❌ Erreur", "error"));
     }
 </script>
-<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='produit.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+<script src="notifications.js"></script>
+<script src="produit.js"></script>
+<script src="back-to-top.js"></script>
 </body>
 </html>

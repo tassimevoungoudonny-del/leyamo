@@ -4,13 +4,11 @@ import bcrypt
 import jwt
 import logging
 import requests
-import time
 from datetime import datetime, timedelta
 from functools import wraps, lru_cache
-from flask import Flask, jsonify, request, send_from_directory, session, render_template
+from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 from flask_compress import Compress
-from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from marshmallow import Schema, fields, validate, ValidationError
 import cloudinary
@@ -29,13 +27,6 @@ app.secret_key = JWT_SECRET
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", "https://*.onrender.com"])
 
 # ==========================================
-# CONTEXT PROCESSOR – VERSIONNAGE AUTOMATIQUE
-# ==========================================
-@app.context_processor
-def inject_version():
-    return dict(version=int(time.time()))
-
-# ==========================================
 # COMPRESSION GZIP
 # ==========================================
 Compress(app)
@@ -52,16 +43,6 @@ cloudinary.config(
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ==========================================
-# CACHE STATIQUE (en-têtes)
-# ==========================================
-@app.after_request
-def add_cache_headers(response):
-    if request.path.startswith('/static/') or \
-       request.path.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg')):
-        response.headers['Cache-Control'] = 'public, max-age=604800'
-    return response
 
 # ==========================================
 # SCHEMAS
@@ -253,54 +234,55 @@ def invalidate_product_cache():
 # ==========================================
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/connexion')
 def connexion_page():
-    return render_template('connexion.html')
+    return send_from_directory('.', 'connexion.html')
 
 @app.route('/inscription')
 def inscription_page():
-    return render_template('inscription.html')
+    return send_from_directory('.', 'inscription.html')
 
 @app.route('/dashboard')
 def dashboard_page():
-    return render_template('dashboard.html')
+    return send_from_directory('.', 'dashboard.html')
 
 @app.route('/admin')
 def admin_page():
-    return render_template('admin.html')
+    return send_from_directory('.', 'admin.html')
 
 @app.route('/admin-connexion')
 def admin_connexion_page():
-    return render_template('admin-connexion.html')
+    return send_from_directory('.', 'admin-connexion.html')
 
 @app.route('/ajouter-produit')
 def ajouter_produit_page():
-    return render_template('ajouter-produit.html')
+    return send_from_directory('.', 'ajouter-produit.html')
 
 @app.route('/modifier-produit')
 def modifier_produit_page():
-    return render_template('modifier-produit.html')
+    return send_from_directory('.', 'modifier-produit.html')
 
 @app.route('/boutique')
 def boutique_page():
-    return render_template('boutique.html')
+    return send_from_directory('.', 'boutique.html')
 
 @app.route('/a-propos')
 def apropos_page():
-    return render_template('a-propos.html')
+    return send_from_directory('.', 'a-propos.html')
 
 @app.route('/confirmer-email')
 def confirmer_email_page():
-    return render_template('confirmer-email.html')
+    return send_from_directory('.', 'confirmer-email.html')
 
 @app.route('/reset-password')
 def reset_password_page():
-    return render_template('reset-password.html')
+    return send_from_directory('.', 'reset-password.html')
 
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
+    # Récupérer les données du produit
     conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("""
@@ -314,6 +296,7 @@ def afficher_produit_html(id):
     conn.close()
     if not produit:
         return "Produit introuvable", 404
+    
     conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("SELECT image_url FROM images_produits WHERE produit_id = %s ORDER BY ordre ASC", (id,))
@@ -321,17 +304,39 @@ def afficher_produit_html(id):
     cur.close()
     conn.close()
     produit["images"] = [img["image_url"] for img in images]
-    image_og = produit["images"][0] if produit["images"] else f"{FRONTEND_URL}/static/default-product.jpg"
+    image_og = produit["images"][0] if produit["images"] else "https://via.placeholder.com/800x400"
     titre_og = produit["nom_produit"]
     description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
     url_og = f"{FRONTEND_URL}/produit/{id}"
-    return render_template("produit.html",
-                           produit=produit,
-                           image_og=image_og,
-                           titre_og=titre_og,
-                           description_og=description_og,
-                           url_og=url_og,
-                           FRONTEND_URL=FRONTEND_URL)
+    
+    # Servir le fichier HTML et remplacer les variables
+    with open('produit.html', 'r', encoding='utf-8') as f:
+        html = f.read()
+    
+    # Remplacer les variables Jinja
+    html = html.replace('{{ produit.nom_produit }}', str(produit['nom_produit']))
+    html = html.replace('{{ produit.prix }}', str(produit['prix']))
+    html = html.replace('{{ produit.categorie }}', str(produit['categorie'] or ''))
+    html = html.replace('{{ produit.description_produit }}', str(produit['description_produit'] or ''))
+    html = html.replace('{{ produit.localisation_detaillee or produit.localisation_boutique or "Non renseigné" }}', str(produit.get('localisation_detaillee') or produit.get('localisation_boutique') or 'Non renseigné'))
+    html = html.replace('{{ produit.vues or 0 }}', str(produit.get('vues') or 0))
+    html = html.replace('{{ produit.nom_boutique or "Boutique" }}', str(produit.get('nom_boutique') or 'Boutique'))
+    html = html.replace('{{ produit.num_whatsapp or "" }}', str(produit.get('num_whatsapp') or ''))
+    html = html.replace('{{ produit.id_vendeur }}', str(produit['id_vendeur']))
+    html = html.replace('{{ titre_og }}', str(titre_og))
+    html = html.replace('{{ description_og }}', str(description_og))
+    html = html.replace('{{ image_og }}', str(image_og))
+    html = html.replace('{{ url_og }}', str(url_og))
+    html = html.replace('{{ FRONTEND_URL }}', str(FRONTEND_URL))
+    
+    # Générer les miniatures
+    miniatures_html = ''
+    for idx, img in enumerate(produit['images']):
+        active_class = 'active' if idx == 0 else ''
+        miniatures_html += f'<img src="{img}" class="{active_class}" onclick="changeImage(this)">'
+    html = html.replace('{% for img in produit.images %}...{% endfor %}', miniatures_html)
+    
+    return html
 
 # ==========================================
 # API ROUTES
@@ -359,12 +364,10 @@ def test_db():
         return {"status": "DB ERROR", "message": str(e)}, 500
 
 # ==========================================
-# SERVEUR DE FICHIERS STATIQUES
+# SERVEUR DE FICHIERS STATIQUES (CSS, JS, images)
 # ==========================================
 @app.route('/<path:path>')
 def serve_static(path):
-    if path.endswith('.html'):
-        return jsonify({"error": "Page non trouvée"}), 404
     try:
         return send_from_directory('.', path)
     except FileNotFoundError:
@@ -736,7 +739,7 @@ def boutique_vendeur(id_vendeur):
     return jsonify({"boutique": vendeur, "produits": produits})
 
 # ==========================================
-# TOP VUES (pour l'accueil)
+# TOP VUES
 # ==========================================
 @app.route('/produits/top-vues', methods=['GET'])
 def top_produits_vues():

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - Leyamo</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="login-container">
@@ -26,24 +26,9 @@
         <p style="text-align:center;margin-top:15px;">Pas encore de compte ? <a href="/inscription" style="color:#0f766e;text-decoration:none;">Inscrivez-vous</a></p>
     </div>
 </div>
-<script>
-function ouvrirResetPassword() {
-    const email = prompt("Entrez votre email pour réinitialiser votre mot de passe :");
-    if (email) {
-        fetch(`${API}/vendeurs/reset-password`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-        })
-        .then(res => res.json())
-        .then(data => afficherNotification(data.message, data.message.includes("envoyé") ? "success" : "error"))
-        .catch(() => afficherNotification("Erreur réseau", "error"));
-    }
-}
-</script>
-<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='connexion.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
+<script src="notifications.js"></script>
+<script src="connexion.js"></script>
+<script src="back-to-top.js"></script>
+<script src="form-confirm.js"></script>
 </body>
 </html>

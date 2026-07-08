@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Boutique - Leyamo</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boutique - Leyamo</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
 <body>
-<header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Store</span></h2></div><nav><a href="index.html">Accueil</a><a href="connexion.html">Connexion</a><a href="inscription.html">Inscription</a></nav></header>
+<header>
+    <div class="logo-zone">
+        <img src="logo.webp" alt="Leyamo" class="logo">
+        <h2>Leyamo <span>Store</span></h2>
+    </div>
+    <nav>
+        <a href="/">Accueil</a>
+        <a href="/connexion">Connexion</a>
+        <a href="/inscription">Inscription</a>
+    </nav>
+</header>
 <div style="padding:30px;max-width:1200px;margin:0 auto;">
     <div id="info-boutique" style="background:white;padding:24px;border-radius:16px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
         <h2 id="nom-boutique">Boutique</h2><p id="localisation-boutique">📍 Localisation</p><p>📱 WhatsApp: <span id="num-whatsapp"></span></p>
     </div>
     <h2>Produits</h2><div id="produits-boutique" class="grille-produits"></div>
 </div>
-<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
 <script>
 const API = "";
 const id = new URLSearchParams(window.location.search).get("id");
-chargerBoutique();
-
 async function chargerBoutique() {
     if (!id) { document.getElementById("info-boutique").innerHTML = "<p>Vendeur introuvable</p>"; return; }
     try {
@@ -34,7 +45,7 @@ async function chargerBoutique() {
                     <div class="info-produit">
                         <h3>${p.nom_produit}</h3><p class="prix">${p.prix} FCFA</p>
                         <span class="categorie">${p.categorie}</span>
-                        <div class="boutons"><a href="produit.html?id=${p.id}" class="btn voir">Voir</a><a href="produit.html?id=${p.id}" class="btn commander">Commander</a></div>
+                        <div class="boutons"><a href="/produit/${p.id}" class="btn voir">Voir</a><a href="/produit/${p.id}" class="btn commander">Commander</a></div>
                     </div>
                 </div>
             `;
@@ -43,7 +54,9 @@ async function chargerBoutique() {
         afficherNotification("Erreur de chargement", "error");
     }
 }
+chargerBoutique();
 </script>
+<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
 <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
 </body>
 </html>

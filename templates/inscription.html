@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Inscription - Leyamo</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - Leyamo</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
 <body>
 <div class="login-container">
     <div class="login-box">
@@ -15,7 +19,7 @@
         <label for="localisation_detaillee">Localisation détaillée</label><input type="text" id="localisation_detaillee" placeholder="Ex: Yaoundé - Ekounou">
         <button onclick="inscription()">Créer mon compte</button>
         <p id="message"></p>
-        <p style="text-align:center;margin-top:15px;">Déjà un compte ? <a href="connexion.html" style="color:#0f766e;text-decoration:none;">Connectez-vous</a></p>
+        <p style="text-align:center;margin-top:15px;">Déjà un compte ? <a href="/connexion" style="color:#0f766e;text-decoration:none;">Connectez-vous</a></p>
     </div>
 </div>
 <script src="{{ url_for('static', filename='inscription.js') }}?v={{ version }}"></script>

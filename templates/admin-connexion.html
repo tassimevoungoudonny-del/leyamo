@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin - Connexion</title>
-  <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Connexion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
+<body>
 <div class="login-container">
     <div class="login-box">
         <h2>🔐 Admin <span>Leyamo</span></h2>
@@ -13,7 +18,6 @@
 </div>
 <script>
 const API = "";
-
 async function adminLogin() {
     const email = document.getElementById("email").value.trim();
     const mot_de_passe = document.getElementById("mot_de_passe").value;
@@ -34,7 +38,7 @@ async function adminLogin() {
             localStorage.setItem("csrf_token", data.csrf_token);
             document.getElementById("message").innerHTML = "✅ Connexion réussie";
             document.getElementById("message").style.color = "green";
-            setTimeout(() => { window.location.href = "admin.html"; }, 1000);
+            setTimeout(() => { window.location.href = "/admin"; }, 1000);
         } else {
             document.getElementById("message").innerHTML = "❌ " + data.message;
             document.getElementById("message").style.color = "red";
@@ -46,8 +50,5 @@ async function adminLogin() {
 }
 </script>
 <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
-<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
-
 </body>
-
 </html>

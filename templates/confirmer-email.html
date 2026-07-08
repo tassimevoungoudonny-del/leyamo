@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Confirmation email - Leyamo</title>
-   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation email - Leyamo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
 <body>
 <div class="login-container">
     <div class="login-box">
         <h2>📧 Confirmation <span>email</span></h2>
         <div id="message">Vérification en cours...</div>
-        <div style="text-align:center;margin-top:15px;"><a href="connexion.html" style="color:#0f766e;text-decoration:none;">🔑 Aller à la connexion</a></div>
+        <div style="text-align:center;margin-top:15px;"><a href="/connexion" style="color:#0f766e;text-decoration:none;">🔑 Aller à la connexion</a></div>
     </div>
 </div>
 <script>
 const API = "";
 const token = new URLSearchParams(window.location.search).get("token");
-
 async function confirmerEmail() {
     if (!token) {
         document.getElementById("message").innerHTML = "❌ Token manquant";
@@ -26,7 +29,7 @@ async function confirmerEmail() {
         if (reponse.status === 200) {
             document.getElementById("message").innerHTML = `✅ ${data.message}`;
             document.getElementById("message").style.color = "green";
-            setTimeout(() => { window.location.href = "connexion.html"; }, 3000);
+            setTimeout(() => { window.location.href = "/connexion"; }, 3000);
         } else {
             document.getElementById("message").innerHTML = `❌ ${data.message}`;
             document.getElementById("message").style.color = "red";

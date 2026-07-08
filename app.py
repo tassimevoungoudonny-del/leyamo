@@ -4,6 +4,7 @@ import bcrypt
 import jwt
 import logging
 import requests
+import time
 from datetime import datetime, timedelta
 from functools import wraps, lru_cache
 from flask import Flask, jsonify, request, send_from_directory, session, render_template
@@ -28,6 +29,13 @@ app.secret_key = JWT_SECRET
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", "https://*.onrender.com"])
 
 # ==========================================
+# CONTEXT PROCESSOR – VERSIONNAGE AUTOMATIQUE
+# ==========================================
+@app.context_processor
+def inject_version():
+    return dict(version=int(time.time()))
+
+# ==========================================
 # COMPRESSION GZIP
 # ==========================================
 Compress(app)
@@ -46,17 +54,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# CACHE STATIQUE (en-têtes HTTP)
+# CACHE STATIQUE (en-têtes)
 # ==========================================
 @app.after_request
 def add_cache_headers(response):
     if request.path.startswith('/static/') or \
        request.path.endswith(('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg')):
-        response.headers['Cache-Control'] = 'public, max-age=604800'  # 7 jours
+        response.headers['Cache-Control'] = 'public, max-age=604800'
     return response
 
 # ==========================================
-# SCHEMAS (validation des données)
+# SCHEMAS
 # ==========================================
 class InscriptionSchema(Schema):
     nom = fields.Str(required=True, validate=validate.Length(min=2, max=100))
@@ -84,7 +92,7 @@ class ResetPasswordSchema(Schema):
     email = fields.Email(required=True)
 
 # ==========================================
-# CSRF (protection)
+# CSRF
 # ==========================================
 def generer_token_csrf():
     token = str(uuid.uuid4())
@@ -135,7 +143,6 @@ def get_admin_id(token):
     return payload['user_id'] if payload and payload.get('role') == 'admin' else None
 
 def log_action(action, details=None, ip=None):
-    # Désactiver les logs pour les routes à fort trafic
     if action in ['vue_produit', 'recherche', 'filtrage']:
         return
     conn = obtenir_connexion()
@@ -242,43 +249,58 @@ def invalidate_product_cache():
     get_cached_categories.cache_clear()
 
 # ==========================================
-# ROUTES PRINCIPALES
+# ROUTES POUR LES PAGES HTML (templates)
 # ==========================================
-@app.route('/csrf-token', methods=['GET'])
-def get_csrf_token():
-    return jsonify({"csrf_token": generer_token_csrf()})
-
 @app.route('/')
-def home():
-    return jsonify({"message": "Leyamo API OK 🚀"})
+def index():
+    return render_template('index.html')
 
-@app.route('/health')
-def health():
-    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+@app.route('/connexion')
+def connexion_page():
+    return render_template('connexion.html')
 
-@app.route('/<path:path>')
-def serve_static(path):
-    try:
-        return send_from_directory('.', path)
-    except FileNotFoundError:
-        return jsonify({"error": "Fichier non trouvé"}), 404
+@app.route('/inscription')
+def inscription_page():
+    return render_template('inscription.html')
 
-@app.route('/test-db')
-def test_db():
-    from base_de_donnees import obtenir_connexion
-    try:
-        conn = obtenir_connexion()
-        if conn:
-            cur = conn.cursor()
-            cur.execute("SELECT 1")
-            return {"status": "DB OK", "message": "Connexion réussie"}
-        else:
-            return {"status": "DB FAIL", "message": "Échec de connexion"}, 500
-    except Exception as e:
-        return {"status": "DB ERROR", "message": str(e)}, 500
+@app.route('/dashboard')
+def dashboard_page():
+    return render_template('dashboard.html')
+
+@app.route('/admin')
+def admin_page():
+    return render_template('admin.html')
+
+@app.route('/admin-connexion')
+def admin_connexion_page():
+    return render_template('admin-connexion.html')
+
+@app.route('/ajouter-produit')
+def ajouter_produit_page():
+    return render_template('ajouter-produit.html')
+
+@app.route('/modifier-produit')
+def modifier_produit_page():
+    return render_template('modifier-produit.html')
+
+@app.route('/boutique')
+def boutique_page():
+    return render_template('boutique.html')
+
+@app.route('/a-propos')
+def apropos_page():
+    return render_template('a-propos.html')
+
+@app.route('/confirmer-email')
+def confirmer_email_page():
+    return render_template('confirmer-email.html')
+
+@app.route('/reset-password')
+def reset_password_page():
+    return render_template('reset-password.html')
 
 # ==========================================
-# PAGE PRODUIT (HTML)
+# PAGE PRODUIT (dynamique)
 # ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
@@ -302,11 +324,54 @@ def afficher_produit_html(id):
     cur.close()
     conn.close()
     produit["images"] = [img["image_url"] for img in images]
-    image_og = produit["images"][0] if produit["images"] else "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400'%3E%3Crect width='800' height='400' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='36' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E"
+    image_og = produit["images"][0] if produit["images"] else f"{FRONTEND_URL}/static/default-product.jpg"
     titre_og = produit["nom_produit"]
     description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
     url_og = f"{FRONTEND_URL}/produit/{id}"
-    return render_template("produit.html", produit=produit, image_og=image_og, titre_og=titre_og, description_og=description_og, url_og=url_og, FRONTEND_URL=FRONTEND_URL)
+    return render_template("produit.html",
+                           produit=produit,
+                           image_og=image_og,
+                           titre_og=titre_og,
+                           description_og=description_og,
+                           url_og=url_og,
+                           FRONTEND_URL=FRONTEND_URL)
+
+# ==========================================
+# API ROUTES
+# ==========================================
+@app.route('/csrf-token', methods=['GET'])
+def get_csrf_token():
+    return jsonify({"csrf_token": generer_token_csrf()})
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+
+@app.route('/test-db')
+def test_db():
+    from base_de_donnees import obtenir_connexion
+    try:
+        conn = obtenir_connexion()
+        if conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            return {"status": "DB OK", "message": "Connexion réussie"}
+        else:
+            return {"status": "DB FAIL", "message": "Échec de connexion"}, 500
+    except Exception as e:
+        return {"status": "DB ERROR", "message": str(e)}, 500
+
+# ==========================================
+# STATIC FILES (sauf .html)
+# ==========================================
+@app.route('/<path:path>')
+def serve_static(path):
+    if path.endswith('.html'):
+        return jsonify({"error": "Page non trouvée"}), 404
+    try:
+        return send_from_directory('.', path)
+    except FileNotFoundError:
+        return jsonify({"error": "Fichier non trouvé"}), 404
 
 # ==========================================
 # AUTHENTIFICATION VENDEUR
@@ -349,7 +414,7 @@ def inscription_vendeur():
         conn.commit()
         envoyer_email_confirmation(data['email'], data['nom'], token)
         log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
-        envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin.html#vendeurs")
+        envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin#vendeurs")
         cur.close()
         conn.close()
         return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
@@ -428,20 +493,16 @@ def reset_password():
         data = ResetPasswordSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Email invalide", "errors": err.messages}), 400
-    
     email = data['email']
     conn = obtenir_connexion()
     if not conn:
         return jsonify({"message": "Erreur connexion BD"}), 500
-    
     cur = conn.cursor()
     cur.execute("SELECT id FROM vendeurs WHERE email = %s", (email,))
     vendeur = cur.fetchone()
     cur.close()
-    
     if not vendeur:
         return jsonify({"message": "Aucun compte associé à cet email"}), 404
-    
     token = str(uuid.uuid4())
     cur = conn.cursor()
     cur.execute(
@@ -451,10 +512,8 @@ def reset_password():
     conn.commit()
     cur.close()
     conn.close()
-    
     envoyer_email_reset(email, token)
     log_action("reset_password", f"Email: {email}", request.remote_addr)
-    
     return jsonify({"message": "Email de réinitialisation envoyé"}), 200
 
 @app.route('/vendeurs/reset-password/confirm', methods=['POST'])
@@ -462,13 +521,10 @@ def confirm_reset_password():
     data = request.get_json()
     token = data.get('token')
     nouveau_mot_de_passe = data.get('nouveau_mot_de_passe')
-    
     if not token or not nouveau_mot_de_passe:
         return jsonify({"message": "Token et mot de passe requis"}), 400
-    
     if len(nouveau_mot_de_passe) < 6:
         return jsonify({"message": "Le mot de passe doit contenir au moins 6 caractères"}), 400
-    
     conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute(
@@ -476,28 +532,23 @@ def confirm_reset_password():
         (token,)
     )
     token_data = cur.fetchone()
-    
     if not token_data:
         cur.close()
         conn.close()
         return jsonify({"message": "Token invalide ou expiré"}), 400
-    
     email = token_data['email']
     mdp_hash = hash_mot_de_passe(nouveau_mot_de_passe)
-    
     cur.execute("UPDATE vendeurs SET mot_de_passe = %s WHERE email = %s", (mdp_hash, email))
     conn.commit()
     cur.execute("DELETE FROM email_tokens WHERE token = %s", (token,))
     conn.commit()
     cur.close()
     conn.close()
-    
     log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
-    
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
 # ==========================================
-# PRODUITS (PUBLIC) - OPTIMISÉES
+# PRODUITS (PUBLIC)
 # ==========================================
 @app.route('/produits', methods=['GET'])
 def voir_produits():
@@ -552,9 +603,6 @@ def voir_produit_json(id):
     conn.close()
     return jsonify({"status": "success", "data": produit})
 
-# ==========================================
-# ROUTE FILTRER - CORRIGÉE (avec jointure)
-# ==========================================
 @app.route('/produits/filtrer', methods=['GET'])
 def filtrer_produits():
     page = request.args.get('page', 1, type=int)
@@ -570,7 +618,6 @@ def filtrer_produits():
         return jsonify({"status": "error", "message": "Erreur connexion"}), 500
     cur = conn.cursor()
 
-    # Requête de base avec jointure
     base_query = """
         FROM produits p
         LEFT JOIN vendeurs v ON p.id_vendeur = v.id
@@ -598,12 +645,10 @@ def filtrer_produits():
     if conditions:
         base_query += " AND " + " AND ".join(conditions)
 
-    # Compter le total
     count_query = f"SELECT COUNT(*) as total {base_query}"
     cur.execute(count_query, params)
     total = cur.fetchone()['total']
 
-    # Sélectionner les produits avec toutes les colonnes nécessaires
     select_query = f"""
         SELECT p.id, p.nom_produit, p.prix, p.promotion, p.categorie,
                p.image_url, p.id_vendeur, p.vues, v.nom_boutique
@@ -623,9 +668,6 @@ def filtrer_produits():
         "pagination": {"page": page, "limit": limit, "total": total, "pages": (total + limit - 1) // limit if total > 0 else 1}
     })
 
-# ==========================================
-# AUTOCOMPLÉTION, RECHERCHE, BOUTIQUE
-# ==========================================
 @app.route('/produits/autocomplete', methods=['GET'])
 def autocomplete_produits():
     q = request.args.get('q', '')
@@ -697,7 +739,31 @@ def boutique_vendeur(id_vendeur):
     return jsonify({"boutique": vendeur, "produits": produits})
 
 # ==========================================
-# CRUD PRODUITS (avec invalidation de cache)
+# TOP VUES (pour l'accueil)
+# ==========================================
+@app.route('/produits/top-vues', methods=['GET'])
+def top_produits_vues():
+    conn = obtenir_connexion()
+    if not conn:
+        return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT p.id, p.nom_produit, p.prix, p.promotion, p.image_url,
+               p.vues, p.categorie, v.nom_boutique, p.id_vendeur
+        FROM produits p
+        LEFT JOIN vendeurs v ON p.id_vendeur = v.id
+        WHERE p.statut = 'valide'
+        AND p.vues > 0
+        ORDER BY p.vues DESC
+        LIMIT 3
+    """)
+    produits = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success", "data": produits})
+
+# ==========================================
+# CRUD PRODUITS (vendeur)
 # ==========================================
 @app.route('/produits', methods=['POST'])
 @require_csrf
@@ -737,10 +803,10 @@ def ajouter_produit():
         produit_id = cur.lastrowid
         invalidate_product_cache()
         log_action("ajout_produit", f"Produit: {data['nom_produit']}", request.remote_addr)
-        envoyer_notification("nouveau_produit", "admin", 1, f"Nouveau produit : {data['nom_produit']}", "/admin.html#produits")
+        envoyer_notification("nouveau_produit", "admin", 1, f"Nouveau produit : {data['nom_produit']}", "/admin#produits")
         cur.close()
         conn.close()
-        return jsonify({"status": "success", "message": "Produit ajouté 🚀", "produit_id": produit_id}), 201
+        return jsonify({"status": "success", "message": "Produit ajouté, en attente de validation.", "produit_id": produit_id}), 201
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -784,13 +850,14 @@ def modifier_produit(id):
             data.get('image_url'),
             id
         ))
+        # Repasser en attente pour revalidation
         cur.execute("UPDATE produits SET statut = 'en_attente' WHERE id = %s", (id,))
         conn.commit()
         invalidate_product_cache()
         log_action("modification_produit", f"Produit ID: {id}", request.remote_addr)
         cur.close()
         conn.close()
-        return jsonify({"status": "success", "message": "Produit modifié 🚀"})
+        return jsonify({"status": "success", "message": "Produit modifié, en attente de validation."})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -823,7 +890,7 @@ def supprimer_produit(id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# UPLOAD IMAGES (avec timeout)
+# UPLOAD IMAGES (Cloudinary)
 # ==========================================
 @app.route('/upload/<int:produit_id>', methods=['POST'])
 @require_csrf
@@ -983,7 +1050,7 @@ def signaler_produit(id):
         return jsonify({"status": "error", "message": "Produit introuvable"}), 404
     cur.execute("INSERT INTO signalements (produit_id, motif, description) VALUES (%s, %s, %s)", (id, data['motif'], data.get('description', '')))
     conn.commit()
-    envoyer_notification("signalement", "admin", 1, f"Signalement sur '{produit['nom_produit']}'", "/admin.html#signalements")
+    envoyer_notification("signalement", "admin", 1, f"Signalement sur '{produit['nom_produit']}'", "/admin#signalements")
     log_action("signalement_produit", f"Produit ID: {id}", request.remote_addr)
     cur.close()
     conn.close()
@@ -1038,7 +1105,7 @@ def admin_valider_vendeur(id):
     cur.execute("UPDATE vendeurs SET statut = %s, motif_refus = %s WHERE id = %s", (statut, motif, id))
     conn.commit()
     if statut == 'valide':
-        envoyer_notification("compte_valide", "vendeur", id, "Votre compte a été validé !", "/connexion.html")
+        envoyer_notification("compte_valide", "vendeur", id, "Votre compte a été validé !", "/connexion")
     else:
         envoyer_notification("compte_refuse", "vendeur", id, f"Compte refusé. Motif: {motif}", None)
     log_action("admin_valider_vendeur", f"Vendeur ID: {id}, Statut: {statut}", request.remote_addr)
@@ -1051,6 +1118,7 @@ def admin_produits():
     if not get_admin_id(request.headers.get("Authorization")):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
     filtre = request.args.get('filtre', 'recent')
+    statut = request.args.get('statut')  # pour filtrer par statut (ex: 'en_attente')
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 30, type=int)
     offset = (page - 1) * limit
@@ -1059,18 +1127,24 @@ def admin_produits():
     requete = """
         SELECT p.*, v.nom_boutique, v.nom as nom_vendeur
         FROM produits p JOIN vendeurs v ON p.id_vendeur = v.id
+        WHERE 1=1
     """
+    params = []
+    if statut:
+        requete += " AND p.statut = %s"
+        params.append(statut)
     if filtre == 'vues':
         requete += " ORDER BY p.vues DESC"
     elif filtre == 'ancien':
         requete += " ORDER BY p.date_creation ASC"
     else:
         requete += " ORDER BY p.date_creation DESC"
-    count_requete = "SELECT COUNT(*) as total FROM (" + requete + ") as sous_requete"
-    cur.execute(count_requete)
+    count_requete = f"SELECT COUNT(*) as total FROM ({requete}) as sous_requete"
+    cur.execute(count_requete, params)
     total = cur.fetchone()['total']
     requete += " LIMIT %s OFFSET %s"
-    cur.execute(requete, (limit, offset))
+    params.extend([limit, offset])
+    cur.execute(requete, params)
     produits = cur.fetchall()
     cur.close()
     conn.close()
@@ -1099,10 +1173,10 @@ def admin_valider_produit(id):
     invalidate_product_cache()
     if statut == 'valide':
         envoyer_notification("produit_valide", "vendeur", produit['id_vendeur'],
-                            f"Votre produit '{produit['nom_produit']}' a été validé !", f"/produit.html?id={id}")
+                            f"Votre produit '{produit['nom_produit']}' a été validé !", f"/produit/{id}")
     else:
         envoyer_notification("produit_refuse", "vendeur", produit['id_vendeur'],
-                            f"Produit '{produit['nom_produit']}' refusé. Motif: {motif}", "/dashboard.html#refuses")
+                            f"Produit '{produit['nom_produit']}' refusé. Motif: {motif}", "/dashboard#refuses")
     log_action("admin_valider_produit", f"Produit ID: {id}, Statut: {statut}", request.remote_addr)
     cur.close()
     conn.close()
@@ -1237,9 +1311,6 @@ def admin_notification_lu(id):
     conn.close()
     return jsonify({"status": "success", "message": "Notification marquée comme lue"})
 
-# ==========================================
-# ADMIN - SIGNALEMENTS
-# ==========================================
 @app.route('/admin/signalements', methods=['GET'])
 def admin_signalements():
     if not get_admin_id(request.headers.get("Authorization")):
@@ -1247,12 +1318,12 @@ def admin_signalements():
     conn = obtenir_connexion()
     cur = conn.cursor()
     cur.execute("""
-    SELECT s.*, p.nom_produit, p.image_url, p.id as produit_id
-    FROM signalements s
-    JOIN produits p ON s.produit_id = p.id
-    WHERE s.statut = 'en_attente'
-    ORDER BY s.date_creation DESC
-""")
+        SELECT s.*, p.nom_produit, p.image_url, p.id as produit_id
+        FROM signalements s
+        JOIN produits p ON s.produit_id = p.id
+        WHERE s.statut = 'en_attente'
+        ORDER BY s.date_creation DESC
+    """)
     signalements = cur.fetchall()
     cur.close()
     conn.close()
@@ -1313,7 +1384,7 @@ def ajouter_avis(id):
     return jsonify({"status": "success", "message": "Avis ajouté"}), 201
 
 # ==========================================
-# FAVORIS
+# FAVORIS (optionnel)
 # ==========================================
 @app.route('/favoris', methods=['POST'])
 def ajouter_favori():

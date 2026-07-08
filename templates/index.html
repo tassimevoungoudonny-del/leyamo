@@ -13,23 +13,23 @@
         <h2>Leyamo <span>Store</span></h2>
     </div>
     <nav>
-        <a href="index.html">Accueil</a>
-        <a href="connexion.html">Connexion</a>
-        <a href="inscription.html">Inscription</a>
+        <a href="/">Accueil</a>
+        <a href="/connexion">Connexion</a>
+        <a href="/inscription">Inscription</a>
         <button onclick="toggleDarkMode()" class="btn-darkmode" title="Mode sombre">🌙</button>
     </nav>
 </header>
 <section class="hero">
     <h1>Trouvez les meilleurs produits près de chez vous</h1>
     <div id="bienvenue-container">
-    <p id="message-bienvenue" class="bienvenue-texte">
-        👋 Bienvenue sur Leyamo !<br>
-        <span style="font-size:14px; font-weight:400;">
-            La marketplace africaine qui connecte acheteurs et vendeurs locaux.
-        </span>
-    </p>
-    <button onclick="fermerBienvenue()" class="bienvenue-close">✕</button>
-</div>
+        <p id="message-bienvenue" class="bienvenue-texte">
+            👋 Bienvenue sur Leyamo !<br>
+            <span style="font-size:14px; font-weight:400;">
+                La marketplace africaine qui connecte acheteurs et vendeurs locaux.
+            </span>
+        </p>
+        <button onclick="fermerBienvenue()" class="bienvenue-close">✕</button>
+    </div>
     <div class="search-box">
         <div class="search-input-wrapper">
             <input type="text" id="recherche" placeholder="Rechercher un produit...">
@@ -50,11 +50,11 @@
     </div>
     <div class="filtre-container">
         <div class="groupe-filtres">
-            <span>Catégories :</span>
+            <span>Catégorie :</span>
             <button class="filtre-btn active" data-categorie="all">Tous</button>
             <button class="filtre-btn" data-categorie="Vêtements">👕 Vêtements</button>
             <button class="filtre-btn" data-categorie="Chaussures">👟 Chaussures</button>
-            <button class="filtre-btn" data-categorie="Maillot">🏊 Maillots</button>
+            <button class="filtre-btn" data-categorie="Maillot">🏊 Maillot</button>
         </div>
         <div class="groupe-filtres">
             <span>Genre :</span>
@@ -72,6 +72,18 @@
         </div>
     </div>
 </section>
+
+<!-- 🔥 Section Top Vues -->
+<section class="top-vues-section">
+    <div class="top-vues-header">
+        <h2>🔥 Les plus vues de la semaine</h2>
+        <span class="top-vues-badge">🔥 Tendance</span>
+    </div>
+    <div id="top-vues-container" class="top-vues-grid">
+        <div class="top-vues-loading">Chargement...</div>
+    </div>
+</section>
+
 <section class="produits-section">
     <div class="header-produits">
         <h2>Produits disponibles</h2>
@@ -82,23 +94,23 @@
             </div>
         </div>
     </div>
-    <div id="liste-produits" class="grille-produits"></div>
     <div id="compteur-produits" style="text-align:center;font-size:14px;color:#64748b;margin-bottom:10px;"></div>
+    <div id="liste-produits" class="grille-produits"></div>
     <div id="pagination"></div>
 </section>
 <footer>
     <p>© 2026 <span>Leyamo</span> Store</p>
     <p style="margin-top: 8px; font-size: 13px;">
-        <a href="a-propos.html" style="color: #a7f3d0; text-decoration: underline;">À propos</a>
+        <a href="/a-propos" style="color: #a7f3d0; text-decoration: underline;">À propos</a>
         &nbsp;|&nbsp;
         <a href="mailto:leyamocontact@gmail.com" style="color: #a7f3d0; text-decoration: underline;">Contact</a>
     </p>
 </footer>
 <script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
-    <script src="{{ url_for('static', filename='app.js') }}?v={{ version }}"></script>
-    <script src="{{ url_for('static', filename='banniere.js') }}?v={{ version }}"></script>
-    <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
-    <script src="{{ url_for('static', filename='bienvenue.js') }}?v={{ version }}"></script>
-    <script src="{{ url_for('static', filename='sondage.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='banniere.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='bienvenue.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='sondage.js') }}?v={{ version }}"></script>
 </body>
 </html>

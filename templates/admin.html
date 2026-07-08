@@ -1,21 +1,31 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin - Leyamo</title>>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Leyamo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
+</head>
 <body>
-<header><div class="logo-zone"><img src="logo.webp" alt="Leyamo" class="logo"><h2>Leyamo <span>Admin</span></h2></div><button onclick="adminDeconnexion()" class="btn-deconnexion">Déconnexion</button></header>
+<header>
+    <div class="logo-zone">
+        <img src="logo.webp" alt="Leyamo" class="logo">
+        <h2>Leyamo <span>Admin</span></h2>
+    </div>
+    <button onclick="adminDeconnexion()" class="btn-deconnexion">Déconnexion</button>
+</header>
 <div class="dashboard" style="max-width:1400px;">
     <!-- STATS -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:30px;">
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #0f766e;"><h2 id="stat-total-produits" style="font-size:28px;color:#0f766e;">0</h2><p>📦 Total produits</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #f59e0b;"><h2 id="stat-produits-attente" style="font-size:28px;color:#f59e0b;">0</h2><p>⏳ En attente</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #16a34a;"><h2 id="stat-produits-valides" style="font-size:28px;color:#16a34a;">0</h2><p>✅ Validés</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #dc2626;"><h2 id="stat-produits-refuses" style="font-size:28px;color:#dc2626;">0</h2><p>❌ Refusés</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #2563eb;"><h2 id="stat-total-vendeurs" style="font-size:28px;color:#2563eb;">0</h2><p>👤 Vendeurs</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #f59e0b;"><h2 id="stat-vendeurs-attente" style="font-size:28px;color:#f59e0b;">0</h2><p>⏳ En attente</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #8b5cf6;"><h2 id="stat-total-vues" style="font-size:28px;color:#8b5cf6;">0</h2><p>👁 Vues globales</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #25D366;"><h2 id="stat-total-clics" style="font-size:28px;color:#25D366;">0</h2><p>💬 Clics WhatsApp</p></div>
-        <div class="stat-card" style="background:white;padding:20px;border-radius:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border-left:4px solid #dc2626;"><h2 id="stat-signalements" style="font-size:28px;color:#dc2626;">0</h2><p>🚨 Signalements</p></div>
+        <div class="stat-card" style="border-left-color:#0f766e;"><h2 id="stat-total-produits" style="color:#0f766e;">0</h2><p>📦 Total produits</p></div>
+        <div class="stat-card" style="border-left-color:#f59e0b;"><h2 id="stat-produits-attente" style="color:#f59e0b;">0</h2><p>⏳ En attente</p></div>
+        <div class="stat-card" style="border-left-color:#16a34a;"><h2 id="stat-produits-valides" style="color:#16a34a;">0</h2><p>✅ Validés</p></div>
+        <div class="stat-card" style="border-left-color:#dc2626;"><h2 id="stat-produits-refuses" style="color:#dc2626;">0</h2><p>❌ Refusés</p></div>
+        <div class="stat-card" style="border-left-color:#2563eb;"><h2 id="stat-total-vendeurs" style="color:#2563eb;">0</h2><p>👤 Vendeurs</p></div>
+        <div class="stat-card" style="border-left-color:#f59e0b;"><h2 id="stat-vendeurs-attente" style="color:#f59e0b;">0</h2><p>⏳ En attente</p></div>
+        <div class="stat-card" style="border-left-color:#8b5cf6;"><h2 id="stat-total-vues" style="color:#8b5cf6;">0</h2><p>👁 Vues globales</p></div>
+        <div class="stat-card" style="border-left-color:#25D366;"><h2 id="stat-total-clics" style="color:#25D366;">0</h2><p>💬 Clics WhatsApp</p></div>
+        <div class="stat-card" style="border-left-color:#dc2626;"><h2 id="stat-signalements" style="color:#dc2626;">0</h2><p>🚨 Signalements</p></div>
     </div>
     <!-- GRAPHIQUE -->
     <div style="background:white;padding:24px;border-radius:16px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
@@ -29,18 +39,18 @@
     </div>
     <!-- ONGLETS -->
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="tab-btn active" data-tab="vendeurs" style="padding:10px 24px;border:none;border-radius:50px;background:#0f766e;color:white;cursor:pointer;">👤 Vendeurs</button>
-        <button class="tab-btn" data-tab="produits" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">📦 Produits</button>
-        <button class="tab-btn" data-tab="signalements" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">🚨 Signalements</button>
-        <button class="tab-btn" data-tab="publier" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">📢 Publier</button>
-        <button class="tab-btn" data-tab="logs" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">📋 Logs</button>
-        <button class="tab-btn" data-tab="attente" style="padding:10px 24px;border:none;border-radius:50px;background:#e2e8f0;color:#1e293b;cursor:pointer;">⏳ En attente</button>
+        <button class="tab-btn active" data-tab="vendeurs">👤 Vendeurs</button>
+        <button class="tab-btn" data-tab="produits">📦 Produits</button>
+        <button class="tab-btn" data-tab="signalements">🚨 Signalements</button>
+        <button class="tab-btn" data-tab="publier">📢 Publier</button>
+        <button class="tab-btn" data-tab="logs">📋 Logs</button>
+        <button class="tab-btn" data-tab="attente">⏳ En attente</button>
     </div>
     <!-- FILTRES PRODUITS -->
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-        <button class="filtre-admin active" data-filtre="recent" style="padding:8px 18px;border:2px solid #0f766e;border-radius:50px;background:#0f766e;color:white;cursor:pointer;">Plus récents</button>
-        <button class="filtre-admin" data-filtre="ancien" style="padding:8px 18px;border:2px solid #e2e8f0;border-radius:50px;background:white;color:#1e293b;cursor:pointer;">Plus anciens</button>
-        <button class="filtre-admin" data-filtre="vues" style="padding:8px 18px;border:2px solid #e2e8f0;border-radius:50px;background:white;color:#1e293b;cursor:pointer;">Plus vues</button>
+        <button class="filtre-admin active" data-filtre="recent">Plus récents</button>
+        <button class="filtre-admin" data-filtre="ancien">Plus anciens</button>
+        <button class="filtre-admin" data-filtre="vues">Plus vues</button>
     </div>
     <!-- CONTENU -->
     <div id="contenu-admin">

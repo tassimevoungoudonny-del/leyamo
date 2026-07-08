@@ -1,61 +1,48 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ajouter Produit - Leyamo</title>
-   <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ version }}">
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-box">
-            <h2>Ajouter un <span>produit</span></h2>
-
-            <label for="nom_produit">Nom du produit *</label>
-            <input type="text" id="nom_produit" placeholder="Ex: Nike Air Max" />
-
-            <label for="description_produit">Description</label>
-            <textarea id="description_produit" placeholder="Décrivez votre produit..."></textarea>
-
-            <label for="prix">Prix (FCFA) *</label>
-            <input type="number" id="prix" placeholder="Ex: 15000" />
-
-            <label for="categorie">Catégorie *</label>
-            <select id="categorie">
-                <option value="">Sélectionnez</option>
-                <option value="Vêtements">Vêtements</option>
-                <option value="Chaussures">Chaussures</option>
-                <option value="Maillot">Maillot</option>
-                <option value="Électronique">Électronique</option>
-                <option value="Accessoires">Accessoires</option>
-                <option value="Maison">Maison</option>
-                <option value="Autre">Autre</option>
-            </select>
-
-            <label for="genre">Genre *</label>
-            <select id="genre">
-                <option value="unisexe">Unisexe</option>
-                <option value="masculin">Masculin</option>
-                <option value="feminin">Féminin</option>
-            </select>
-
-            <label for="images_produit">Photos (3 max, 10 Mo)</label>
-            <input type="file" id="images_produit" accept="image/*" multiple />
-
-            <button onclick="ajouterProduit()" id="btn-ajouter">Ajouter</button>
-
-            <p id="message"></p>
-
-            <!-- Prévisualisation des images -->
-            <div id="preview-images" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;"></div>
-        </div>
+<div class="login-container">
+    <div class="login-box">
+        <h2>Ajouter un <span>produit</span></h2>
+        <label for="nom_produit">Nom du produit *</label>
+        <input type="text" id="nom_produit" placeholder="Ex: Nike Air Max">
+        <label for="description_produit">Description</label>
+        <textarea id="description_produit" placeholder="Décrivez votre produit..."></textarea>
+        <label for="prix">Prix (FCFA) *</label>
+        <input type="number" id="prix" placeholder="Ex: 15000">
+        <label for="categorie">Catégorie *</label>
+        <select id="categorie">
+            <option value="">Sélectionnez</option>
+            <option value="Vêtements">Vêtements</option>
+            <option value="Chaussures">Chaussures</option>
+            <option value="Maillot">Maillot</option>
+            <option value="Électronique">Électronique</option>
+            <option value="Accessoires">Accessoires</option>
+            <option value="Maison">Maison</option>
+            <option value="Autre">Autre</option>
+        </select>
+        <label for="genre">Genre *</label>
+        <select id="genre">
+            <option value="unisexe">Unisexe</option>
+            <option value="masculin">Masculin</option>
+            <option value="feminin">Féminin</option>
+        </select>
+        <label for="images_produit">Photos (3 max, 10 Mo)</label>
+        <input type="file" id="images_produit" accept="image/*" multiple>
+        <button onclick="ajouterProduit()" id="btn-ajouter">Ajouter</button>
+        <p id="message"></p>
+        <div id="preview-images" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;"></div>
     </div>
-
-    <!-- Inclusion des scripts -->
-  <script src="{{ url_for('static', filename='ajouter-produit.js') }}?v={{ version }}"></script>
-  <script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
-  <script src="{{ url_for('static', filename='produit.js') }}?v={{ version }}"></script>
-  <script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
-  <script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
+</div>
+<script src="{{ url_for('static', filename='ajouter-produit.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='back-to-top.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', filename='form-confirm.js') }}?v={{ version }}"></script>
 </body>
 </html>

@@ -1,7 +1,6 @@
 const API = "";
 let imagesSelectionnees = [];
 
-// ============ LOADER ============
 function afficherLoader(actif) {
     let overlay = document.getElementById("loader-overlay");
     if (!overlay) {
@@ -14,7 +13,6 @@ function afficherLoader(actif) {
     overlay.className = `loader-overlay${actif ? ' active' : ''}`;
 }
 
-// ============ PRÉVISUALISATION ============
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("images_produit").addEventListener("change", function() {
         const preview = document.getElementById("preview-images");
@@ -43,13 +41,12 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// ============ AJOUT DU PRODUIT ============
 async function ajouterProduit() {
     const token = localStorage.getItem("token");
     const csrf_token = localStorage.getItem("csrf_token");
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
-        window.location.href = "connexion.html";
+        window.location.href = "/connexion";
         return;
     }
 
@@ -81,7 +78,7 @@ async function ajouterProduit() {
                 categorie,
                 genre,
                 image_url: "",
-                promotion: 0  // ✅ Ajout de promotion (même si pas utilisé)
+                promotion: 0
             })
         });
 
@@ -117,7 +114,6 @@ async function ajouterProduit() {
             afficherNotification("✅ Produit ajouté !", "success");
         }
 
-        // Réinitialiser le formulaire
         document.getElementById("nom_produit").value = "";
         document.getElementById("description_produit").value = "";
         document.getElementById("prix").value = "";

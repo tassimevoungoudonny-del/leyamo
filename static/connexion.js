@@ -19,11 +19,9 @@ async function connexion() {
         const data = await reponse.json();
 
         if (data.token) {
-            // 1. Stocker les tokens
             localStorage.setItem("token", data.token);
             localStorage.setItem("csrf_token", data.csrf_token);
 
-            // 2. Récupérer le nom du vendeur pour le message de bienvenue
             try {
                 const reponseMe = await fetch(`${API}/vendeurs/me`, {
                     headers: { "Authorization": data.token }
@@ -32,7 +30,6 @@ async function connexion() {
 
                 if (dataMe.status === 'success') {
                     const nom = dataMe.data.nom || 'Vendeur';
-                    // Afficher le message de bienvenue dans la page de connexion
                     const bienvenueDiv = document.getElementById('bienvenue-connexion');
                     const nomSpan = document.getElementById('nom-vendeur-bienvenue');
                     if (bienvenueDiv && nomSpan) {
@@ -41,14 +38,12 @@ async function connexion() {
                     }
                 }
             } catch (e) {
-                // Ignorer les erreurs de récupération du nom
                 console.warn("Impossible de récupérer le nom du vendeur", e);
             }
 
-            // 3. Notifier et rediriger
             afficherNotification("✅ Connexion réussie", "success");
             setTimeout(() => {
-                window.location.href = "dashboard.html";
+                window.location.href = "/dashboard";
             }, 1500);
 
         } else {

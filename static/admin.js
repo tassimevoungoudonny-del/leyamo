@@ -2,7 +2,7 @@ const API = "";
 const token = localStorage.getItem("token");
 const csrf_token = localStorage.getItem("csrf_token");
 
-if (!token) { window.location.href = "admin-connexion.html"; }
+if (!token) { window.location.href = "/admin-connexion"; }
 
 let filtreActuel = 'recent', logsPage = 1;
 
@@ -15,7 +15,6 @@ async function chargerAdmin() {
     await chargerSignalements();
 }
 
-// ---------- STATS ----------
 async function chargerStats() {
     try {
         const reponse = await fetch(`${API}/admin/stats`, { headers: { "Authorization": token } });
@@ -71,7 +70,6 @@ function afficherTopVendeurs(vendeurs) {
     });
 }
 
-// ---------- VENDEURS ----------
 async function chargerVendeurs() {
     try {
         const reponse = await fetch(`${API}/admin/vendeurs`, { headers: { "Authorization": token } });
@@ -162,7 +160,6 @@ async function refuserVendeur(id) {
     }
 }
 
-// ---------- PRODUITS ----------
 async function chargerProduits(filtre = 'recent', page = 1) {
     filtreActuel = filtre;
     try {
@@ -270,7 +267,6 @@ async function validerProduit(id, statut) {
     }
 }
 
-// ---------- SIGNALEMENTS ----------
 async function chargerSignalements() {
     try {
         const reponse = await fetch(`${API}/admin/signalements`, {
@@ -359,7 +355,6 @@ async function traiterSignalement(id) {
     } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
-// ---------- PUBLIER ----------
 async function chargerProduitsPourPublication() {
     try {
         const reponse = await fetch(`${API}/admin/produits?filtre=recent&limit=100`, {
@@ -380,9 +375,7 @@ async function chargerProduitsPourPublication() {
         data.data.forEach(p => {
             const opt = document.createElement("option");
             opt.value = p.id;
-            // Affichage dans la liste déroulante
             opt.textContent = `${p.nom_produit} - ${p.prix} FCFA`;
-            // Stockage des données supplémentaires dans des attributs data-*
             opt.dataset.prix = p.prix;
             opt.dataset.localisation = p.localisation_boutique || p.localisation || 'Localisation non renseignée';
             opt.dataset.image = p.image_url || '';
@@ -412,18 +405,15 @@ async function publierProduit() {
     const plateforme = document.getElementById("plateforme-publier").value;
     let message = document.getElementById("message-publier").value.trim();
 
-    // Si l'utilisateur n'a pas écrit de message, on génère un message par défaut
     if (!message) {
         message = `🔥 Découvrez ${nom} sur Leyamo !\n\n💰 ${prix} FCFA\n📍 ${localisation}\n🔗 ${window.location.origin}/produit/${produitId}`;
     } else {
-        // On ajoute le lien s'il n'est pas déjà présent
         const lien = `${window.location.origin}/produit/${produitId}`;
         if (!message.includes(lien)) {
             message += `\n\n🔗 Lien : ${lien}`;
         }
     }
 
-    // Appel à l'API pour obtenir l'URL de partage
     try {
         const reponse = await fetch(`${API}/admin/produits/${produitId}/publier`, {
             method: "POST",
@@ -442,7 +432,6 @@ async function publierProduit() {
     }
 }
 
-// ---------- LOGS ----------
 async function chargerLogs(page = 1) {
     logsPage = page;
     try {
@@ -461,13 +450,14 @@ function afficherLogs(logs) {
         c.innerHTML += `<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;flex-wrap:wrap;"><span style="color:#64748b;min-width:160px;">${new Date(log.date_creation).toLocaleString('fr-FR')}</span><span style="font-weight:600;min-width:120px;">${log.action}</span><span style="color:#475569;">${log.details || ''}</span>${log.ip ? `<span style="color:#94a3b8;margin-left:auto;">IP: ${log.ip}</span>` : ''}</div>`;
     });
 }
+
 async function chargerAttente() {
     try {
         const reponse = await fetch(`${API}/admin/produits?filtre=recent&statut=en_attente`, {
             headers: { "Authorization": token }
         });
         const data = await reponse.json();
-        afficherProduitsAdmin(data.data); // réutilise la même fonction d’affichage
+        afficherProduitsAdmin(data.data);
     } catch (e) { afficherNotification("Erreur", "error"); }
 }
 
@@ -499,7 +489,6 @@ function afficherPaginationLogs(pagination) {
     }
 }
 
-// ---------- ONGLETS ----------
 document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", function() {
@@ -512,14 +501,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
             const tab = this.dataset.tab;
 
-            // Affichage/masquage des sections
             document.getElementById("liste-vendeurs").style.display = tab === 'vendeurs' ? 'block' : 'none';
             document.getElementById("liste-produits").style.display = tab === 'produits' ? 'block' : 'none';
             document.getElementById("liste-signalements").style.display = tab === 'signalements' ? 'block' : 'none';
             document.getElementById("publier-produit").style.display = tab === 'publier' ? 'block' : 'none';
             document.getElementById("logs").style.display = tab === 'logs' ? 'block' : 'none';
             document.getElementById("liste-attente").style.display = tab === 'attente' ? 'block' : 'none';
-            // Recharger les données à chaque clic
+
             if (tab === 'vendeurs') chargerVendeurs();
             if (tab === 'produits') chargerProduits(filtreActuel);
             if (tab === 'signalements') chargerSignalements();
@@ -529,7 +517,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // Filtres admin
     document.querySelectorAll(".filtre-admin").forEach(btn => {
         btn.addEventListener("click", function() {
             document.querySelectorAll(".filtre-admin").forEach(b => {
@@ -544,7 +531,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // État initial
     document.getElementById("liste-produits").style.display = 'none';
     document.getElementById("liste-signalements").style.display = 'none';
     document.getElementById("publier-produit").style.display = 'none';
@@ -555,13 +541,10 @@ function adminDeconnexion() {
     localStorage.removeItem("token");
     localStorage.removeItem("csrf_token");
     afficherNotification("Déconnexion admin", "success");
-    setTimeout(() => { window.location.href = "admin-connexion.html"; }, 300);
+    setTimeout(() => { window.location.href = "/admin-connexion"; }, 300);
 }
-// ============================================
-// MODAL DE PUBLICATION (Admin)
-// ============================================
+
 function ouvrirModalPublication(id, nom, prix, categorie, image) {
-    // Créer le modal
     const overlay = document.createElement('div');
     overlay.id = 'modal-publication';
     overlay.style.cssText = `
@@ -631,13 +614,11 @@ function ouvrirModalPublication(id, nom, prix, categorie, image) {
     document.body.appendChild(overlay);
 }
 
-// Fermer le modal
 function fermerModalPublication() {
     const modal = document.getElementById('modal-publication');
     if (modal) modal.remove();
 }
 
-// Publier depuis le modal
 async function publierDepuisModal(produitId) {
     const plateforme = document.getElementById('plateforme-publier-modal').value;
     const message = document.getElementById('message-publier-modal').value.trim();
@@ -676,6 +657,7 @@ async function publierDepuisModal(produitId) {
         afficherNotification("Erreur lors de la publication", "error");
     }
 }
+
 window.validerVendeur = validerVendeur;
 window.refuserVendeur = refuserVendeur;
 window.validerProduit = validerProduit;

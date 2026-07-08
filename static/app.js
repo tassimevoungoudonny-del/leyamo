@@ -5,14 +5,8 @@ let limit = 30;
 let prixMin = 0;
 let prixMax = 100000;
 
-// ============================================
-// IMAGE PAR DÉFAUT (SVG intégré)
-// ============================================
 const DEFAULT_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='28' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
 
-// ============================================
-// LOADER
-// ============================================
 function afficherLoader(actif) {
     let overlay = document.getElementById("loader-overlay");
     if (!overlay) {
@@ -25,9 +19,6 @@ function afficherLoader(actif) {
     overlay.className = `loader-overlay${actif ? ' active' : ''}`;
 }
 
-// ============================================
-// MODE SOMBRE
-// ============================================
 function toggleDarkMode() {
     document.body.classList.toggle("dark-mode");
     const btn = document.querySelector(".btn-darkmode");
@@ -37,9 +28,6 @@ function toggleDarkMode() {
     localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
 }
 
-// ============================================
-// DÉCONNEXION AUTOMATIQUE (30 min)
-// ============================================
 let timerInactivite;
 function reinitialiserTimer() {
     clearTimeout(timerInactivite);
@@ -48,7 +36,7 @@ function reinitialiserTimer() {
             localStorage.removeItem("token");
             localStorage.removeItem("csrf_token");
             afficherNotification("⏰ Session expirée (30 min)", "info");
-            window.location.href = "connexion.html";
+            window.location.href = "/connexion";
         }
     }, 30 * 60 * 1000);
 }
@@ -58,9 +46,6 @@ document.addEventListener("scroll", reinitialiserTimer);
 document.addEventListener("mousemove", reinitialiserTimer);
 reinitialiserTimer();
 
-// ============================================
-// CHARGEMENT PRODUITS
-// ============================================
 function getUrlParams() {
     const params = new URLSearchParams();
     params.set('page', 1);
@@ -77,30 +62,24 @@ function getUrlParams() {
 }
 
 async function chargerProduits(page = 1) {
-    // 1. Désactiver les boutons de filtre pendant le chargement
     const filtres = document.querySelectorAll('.filtre-btn, .filtre-genre');
     filtres.forEach(btn => btn.disabled = true);
 
-    // 2. Construire les paramètres de l'URL
     const params = getUrlParams();
     params.set('page', page);
     const url = `${API}/produits/filtrer?${params}`;
     console.log("🔍 Appel API :", url);
 
-    // 3. Afficher le loader
     afficherLoader(true);
 
     try {
-        // 4. Requête vers l'API
         const reponse = await fetch(url);
         const data = await reponse.json();
         console.log("✅ Données reçues :", data);
 
-        // 5. Afficher les produits et la pagination
         afficherProduits(data.data);
         afficherPagination(data.pagination);
 
-        // 6. Mettre à jour le compteur de produits
         const compteur = document.getElementById("compteur-produits");
         if (compteur) {
             const total = data.pagination?.total || 0;
@@ -113,11 +92,9 @@ async function chargerProduits(page = 1) {
     } catch (erreur) {
         console.error("❌ Erreur :", erreur);
         afficherNotification("Erreur de chargement", "error");
-        // En cas d'erreur, on peut aussi vider le compteur
         const compteur = document.getElementById("compteur-produits");
         if (compteur) compteur.textContent = "Erreur de chargement";
     } finally {
-        // 7. Réactiver les boutons de filtre et cacher le loader
         filtres.forEach(btn => btn.disabled = false);
         afficherLoader(false);
     }
@@ -127,9 +104,6 @@ async function appliquerFiltres(page = 1) {
     chargerProduits(page);
 }
 
-// ============================================
-// RECHERCHE AVEC AUTOCOMPLÉTION
-// ============================================
 let autocompleteTimeout;
 
 async function autocomplete(q) {
@@ -163,7 +137,7 @@ function afficherAutocomplete(resultats) {
             </div>
         `;
         div.addEventListener("click", () => {
-            window.location.href = `produit.html?id=${item.id}`;
+            window.location.href = `/produit/${item.id}`;
         });
         list.appendChild(div);
     });
@@ -175,9 +149,6 @@ document.addEventListener("click", function(e) {
     }
 });
 
-// ============================================
-// RECHERCHE
-// ============================================
 async function rechercherProduit(page = 1) {
     const rechercheInput = document.getElementById("recherche");
     if (!rechercheInput) return;
@@ -224,9 +195,6 @@ function reinitialiserRecherche() {
     afficherNotification("Tous les produits", "success");
 }
 
-// ============================================
-// PAGINATION
-// ============================================
 function afficherPagination(pagination) {
     const container = document.getElementById("pagination");
     if (!container) return;
@@ -257,16 +225,10 @@ function afficherPagination(pagination) {
     container.appendChild(info);
 }
 
-// ============================================
-// FORMATAGE PRIX
-// ============================================
 function formaterPrix(prix) {
     return new Intl.NumberFormat('fr-FR').format(prix);
 }
 
-// ============================================
-// AFFICHAGE PRODUITS
-// ============================================
 function afficherProduits(produits) {
     const liste = document.getElementById("liste-produits");
     if (!liste) return;
@@ -296,11 +258,11 @@ function afficherProduits(produits) {
                     <div>${prixAffichage}</div>
                     <span class="categorie">${produit.categorie}</span>
                     <div class="boutique-lien">
-                        🏪 <a href="boutique.html?id=${produit.id_vendeur}" onclick="event.stopPropagation();">${produit.nom_boutique || 'Boutique'}</a>
+                        🏪 <a href="/boutique?id=${produit.id_vendeur}" onclick="event.stopPropagation();">${produit.nom_boutique || 'Boutique'}</a>
                     </div>
                     <div class="boutons">
-                        <a href="produit.html?id=${produit.id}" class="btn voir" onclick="event.stopPropagation();">Voir</a>
-                        <a href="produit.html?id=${produit.id}" class="btn commander" onclick="event.stopPropagation();">Commander</a>
+                        <a href="/produit/${produit.id}" class="btn voir" onclick="event.stopPropagation();">Voir</a>
+                        <a href="/produit/${produit.id}" class="btn commander" onclick="event.stopPropagation();">Commander</a>
                     </div>
                     <button onclick="event.stopPropagation(); signalerProduit(${produit.id}, '${produit.nom_produit}')" class="btn-signaler">🚨 Signaler</button>
                 </div>
@@ -309,9 +271,6 @@ function afficherProduits(produits) {
     });
 }
 
-// ============================================
-// APERÇU RAPIDE (QUICK VIEW)
-// ============================================
 async function quickView(id) {
     afficherLoader(true);
     try {
@@ -334,8 +293,8 @@ async function quickView(id) {
                     <p id="qv-boutique" class="qv-boutique"></p>
                     <div id="qv-avis" style="font-size:14px;color:#64748b;margin-top:8px;"></div>
                     <div class="qv-boutons">
-                        <button class="btn btn-qv-voir" onclick="window.location.href='produit.html?id=${id}'">Voir le produit</button>
-                        <button class="btn btn-qv-commander" onclick="window.location.href='produit.html?id=${id}'">Commander</button>
+                        <button class="btn btn-qv-voir" onclick="window.location.href='/produit/${id}'">Voir le produit</button>
+                        <button class="btn btn-qv-commander" onclick="window.location.href='/produit/${id}'">Commander</button>
                     </div>
                 </div>
             `;
@@ -373,9 +332,6 @@ function fermerQuickView() {
     document.getElementById("quick-view-overlay")?.classList.remove("active");
 }
 
-// ============================================
-// SIGNALEMENT
-// ============================================
 async function signalerProduit(id, nom) {
     const motif = prompt(`Motif du signalement pour "${nom}" :`);
     if (!motif) return;
@@ -393,20 +349,15 @@ async function signalerProduit(id, nom) {
     }
 }
 
-// ============================================
-// INITIALISATION AU CHARGEMENT DU DOM
-// ============================================
 document.addEventListener("DOMContentLoaded", function() {
     console.log("🚀 DOM chargé, initialisation...");
 
-    // 1. Mode sombre
     const darkBtn = document.querySelector(".btn-darkmode");
     if (darkBtn && localStorage.getItem("darkMode") === "true") {
         document.body.classList.add("dark-mode");
         darkBtn.textContent = "☀️";
     }
 
-    // 2. Recherche
     const rechercheInput = document.getElementById("recherche");
     if (rechercheInput) {
         rechercheInput.addEventListener("input", function() {
@@ -430,9 +381,7 @@ document.addEventListener("DOMContentLoaded", function() {
         clearBtn.addEventListener("click", reinitialiserRecherche);
     }
 
-    // 3. FILTRES - Gestion via délégation
     document.addEventListener("click", function(e) {
-        // Catégories
         const catBtn = e.target.closest(".filtre-btn");
         if (catBtn) {
             console.log("🔵 Clic catégorie :", catBtn.dataset.categorie);
@@ -443,7 +392,6 @@ document.addEventListener("DOMContentLoaded", function() {
             chargerProduits(1);
         }
 
-        // Genres
         const genreBtn = e.target.closest(".filtre-genre");
         if (genreBtn) {
             console.log("🔵 Clic genre :", genreBtn.dataset.genre);
@@ -455,7 +403,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // 4. Prix
     const prixMinInput = document.getElementById("prix-min");
     const prixMaxInput = document.getElementById("prix-max");
     const prixMinLabel = document.getElementById("prix-min-label");
@@ -476,7 +423,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // 5. Limit
     const limitSelect = document.getElementById("limit-select");
     if (limitSelect) {
         limitSelect.addEventListener("change", function() {
@@ -485,7 +431,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // 6. Vues (grille/liste)
     const viewGrid = document.getElementById("view-grid");
     const viewList = document.getElementById("view-list");
     if (viewGrid) {
@@ -503,14 +448,10 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // 7. Chargement initial
     chargerProduits(1);
     console.log("✅ Initialisation terminée.");
 });
 
-// ============================================
-// EXPORT POUR LES APPELS onclick
-// ============================================
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;
 window.signalerProduit = signalerProduit;

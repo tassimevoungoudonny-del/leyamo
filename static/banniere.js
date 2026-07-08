@@ -1,8 +1,7 @@
 (function() {
     const BANNIERE_KEY = 'leyamo_banniere_whatsapp';
-    const DELAI = 10000; // 10 secondes
+    const DELAI = 10000;
 
-    // Ne pas afficher si déjà vue dans les 7 jours
     const derniereFermeture = localStorage.getItem(BANNIERE_KEY);
     if (derniereFermeture && (Date.now() - parseInt(derniereFermeture) < 7 * 24 * 60 * 60 * 1000)) {
         return;

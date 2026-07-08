@@ -34,7 +34,9 @@ async function inscription() {
         const data = await reponse.json();
         if (reponse.status === 201) {
             afficherNotification("✅ " + data.message, "success");
-            setTimeout(() => { window.location.href = "connexion.html"; }, 3000);
+            setTimeout(() => {
+                window.location.href = "/connexion";
+            }, 3000);
         } else {
             afficherNotification("❌ " + data.message, "error");
         }

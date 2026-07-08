@@ -24,7 +24,7 @@ async function modifierProduit() {
     const csrf_token = localStorage.getItem("csrf_token");
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
-        window.location.href = "connexion.html";
+        window.location.href = "/connexion";
         return;
     }
 

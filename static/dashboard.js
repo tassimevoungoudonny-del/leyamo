@@ -1,8 +1,5 @@
 const API = "";
 
-// ============================================
-// CHARGEMENT DU DASHBOARD
-// ============================================
 chargerDashboard();
 
 async function chargerDashboard() {
@@ -10,7 +7,7 @@ async function chargerDashboard() {
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
         setTimeout(() => {
-            window.location.href = "connexion.html";
+            window.location.href = "/connexion";
         }, 1500);
         return;
     }
@@ -24,7 +21,7 @@ async function chargerDashboard() {
             localStorage.removeItem("token");
             afficherNotification("Session expirée", "error");
             setTimeout(() => {
-                window.location.href = "connexion.html";
+                window.location.href = "/connexion";
             }, 1500);
             return;
         }
@@ -37,36 +34,28 @@ async function chargerDashboard() {
     }
 }
 
-// ============================================
-// AFFICHAGE DU DASHBOARD
-// ============================================
 function afficherDashboard(data) {
-    // Infos vendeur
     document.getElementById("nom-vendeur").innerHTML = data.vendeur.nom;
     document.getElementById("nom-boutique").innerHTML = data.vendeur.nom_boutique;
 
-    // Lien vers la boutique
     const lienBoutique = document.getElementById("lien-ma-boutique");
     if (data.vendeur && data.vendeur.id) {
-        lienBoutique.href = `boutique.html?id=${data.vendeur.id}`;
+        lienBoutique.href = `/boutique?id=${data.vendeur.id}`;
         lienBoutique.style.display = "inline-block";
     } else {
         lienBoutique.style.display = "none";
     }
 
-    // Statistiques
     document.getElementById("nb-produits").innerHTML = data.statistiques.total_produits || 0;
     document.getElementById("nb-vues").innerHTML = data.statistiques.total_vues || 0;
     document.getElementById("nb-clics").innerHTML = data.statistiques.total_clics || 0;
 
-    // Séparation des produits
     const valides = data.produits.filter(p => p.statut !== 'refuse');
     const refuses = data.produits.filter(p => p.statut === 'refuse');
 
     afficherValides(valides);
     afficherRefuses(refuses);
 
-    // Gestion des onglets
     document.querySelectorAll(".tab-produit").forEach(btn => {
         btn.addEventListener("click", function() {
             document.querySelectorAll(".tab-produit").forEach(b => {
@@ -83,9 +72,6 @@ function afficherDashboard(data) {
     });
 }
 
-// ============================================
-// AFFICHAGE PRODUITS VALIDÉS
-// ============================================
 function afficherValides(produits) {
     const zone = document.getElementById("mes-produits");
     zone.innerHTML = "";
@@ -94,7 +80,7 @@ function afficherValides(produits) {
         zone.innerHTML = `
             <div style="text-align:center; padding:40px; background:white; border-radius:12px; color:#64748b;">
                 <p style="font-size:18px;">📦 Aucun produit pour le moment</p>
-                <a href="ajouter-produit.html" style="color:#0f766e; text-decoration:none; font-weight:600;">Ajouter votre premier produit</a>
+                <a href="/ajouter-produit" style="color:#0f766e; text-decoration:none; font-weight:600;">Ajouter votre premier produit</a>
             </div>
         `;
         return;
@@ -108,7 +94,6 @@ function afficherValides(produits) {
             year: 'numeric'
         });
 
-        // Gestion promotion
         let prixHtml = `<span class="prix">${new Intl.NumberFormat('fr-FR').format(p.prix)} FCFA</span>`;
         if (p.promotion && p.promotion > 0) {
             const prixOriginal = new Intl.NumberFormat('fr-FR').format(p.prix);
@@ -138,10 +123,9 @@ function afficherValides(produits) {
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <a href="produit.html?id=${p.id}" target="_blank" style="background:#0f766e; color:white; text-decoration:none; padding:6px 16px; border-radius:50px; font-size:13px; font-weight:600;">Voir plus</a>
+                    <a href="/produit/${p.id}" target="_blank" style="background:#0f766e; color:white; text-decoration:none; padding:6px 16px; border-radius:50px; font-size:13px; font-weight:600;">Voir plus</a>
                     <button onclick="modifierProduit(${p.id})" style="background:#2563eb; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer;">Modifier</button>
                     <button onclick="supprimerProduit(${p.id})" style="background:#dc2626; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer;">Supprimer</button>
-                    <!-- 👇 NOUVEAU BOUTON PUBLIER POUR VENDEUR -->
                     <button onclick="ouvrirModalPublicationVendeur(${p.id}, '${p.nom_produit}', ${p.prix}, '${p.categorie}', '${p.image_url || ''}')" 
                             style="background:#25D366; color:white; border:none; padding:6px 14px; border-radius:50px; cursor:pointer; font-weight:600;">
                         📢 Publier
@@ -152,9 +136,6 @@ function afficherValides(produits) {
     });
 }
 
-// ============================================
-// AFFICHAGE PRODUITS REFUSÉS
-// ============================================
 function afficherRefuses(produits) {
     const zone = document.getElementById("mes-produits-refuses");
     zone.innerHTML = "";
@@ -189,11 +170,8 @@ function afficherRefuses(produits) {
     });
 }
 
-// ============================================
-// ACTIONS
-// ============================================
 function modifierProduit(id) {
-    window.location.href = `modifier-produit.html?id=${id}`;
+    window.location.href = `/modifier-produit?id=${id}`;
 }
 
 async function supprimerProduit(id) {
@@ -253,7 +231,7 @@ async function supprimerCompte() {
         if (reponse.status === 200) {
             afficherNotification("✅ " + data.message, "success");
             localStorage.clear();
-            window.location.href = "connexion.html";
+            window.location.href = "/connexion";
         } else {
             afficherNotification("❌ " + data.message, "error");
         }
@@ -268,24 +246,20 @@ function deconnexion() {
     localStorage.removeItem("csrf_token");
     afficherNotification("Déconnexion réussie", "success");
     setTimeout(() => {
-        window.location.href = "connexion.html";
+        window.location.href = "/connexion";
     }, 300);
 }
 
-// ============================================
-// MODAL DE PUBLICATION POUR VENDEUR
-// ============================================
 function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
     const token = localStorage.getItem("token");
     const csrf_token = localStorage.getItem("csrf_token");
 
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
-        window.location.href = "connexion.html";
+        window.location.href = "/connexion";
         return;
     }
 
-    // Créer le modal
     const overlay = document.createElement('div');
     overlay.id = 'modal-publication-vendeur';
     overlay.style.cssText = `
@@ -406,9 +380,6 @@ async function publierDepuisModalVendeur(produitId) {
     }
 }
 
-// ============================================
-// EXPORT (pour les appels HTML onclick)
-// ============================================
 window.modifierProduit = modifierProduit;
 window.supprimerProduit = supprimerProduit;
 window.supprimerCompte = supprimerCompte;

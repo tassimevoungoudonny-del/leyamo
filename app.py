@@ -249,7 +249,7 @@ def invalidate_product_cache():
     get_cached_categories.cache_clear()
 
 # ==========================================
-# ROUTES POUR LES PAGES HTML (templates)
+# ROUTES POUR LES PAGES HTML
 # ==========================================
 @app.route('/')
 def index():
@@ -299,9 +299,6 @@ def confirmer_email_page():
 def reset_password_page():
     return render_template('reset-password.html')
 
-# ==========================================
-# PAGE PRODUIT (dynamique)
-# ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
     conn = obtenir_connexion()
@@ -362,7 +359,7 @@ def test_db():
         return {"status": "DB ERROR", "message": str(e)}, 500
 
 # ==========================================
-# STATIC FILES (sauf .html)
+# SERVEUR DE FICHIERS STATIQUES
 # ==========================================
 @app.route('/<path:path>')
 def serve_static(path):
@@ -850,7 +847,6 @@ def modifier_produit(id):
             data.get('image_url'),
             id
         ))
-        # Repasser en attente pour revalidation
         cur.execute("UPDATE produits SET statut = 'en_attente' WHERE id = %s", (id,))
         conn.commit()
         invalidate_product_cache()
@@ -1118,7 +1114,7 @@ def admin_produits():
     if not get_admin_id(request.headers.get("Authorization")):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
     filtre = request.args.get('filtre', 'recent')
-    statut = request.args.get('statut')  # pour filtrer par statut (ex: 'en_attente')
+    statut = request.args.get('statut')
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 30, type=int)
     offset = (page - 1) * limit
@@ -1311,6 +1307,9 @@ def admin_notification_lu(id):
     conn.close()
     return jsonify({"status": "success", "message": "Notification marquée comme lue"})
 
+# ==========================================
+# ADMIN - SIGNALEMENTS
+# ==========================================
 @app.route('/admin/signalements', methods=['GET'])
 def admin_signalements():
     if not get_admin_id(request.headers.get("Authorization")):
@@ -1384,7 +1383,7 @@ def ajouter_avis(id):
     return jsonify({"status": "success", "message": "Avis ajouté"}), 201
 
 # ==========================================
-# FAVORIS (optionnel)
+# FAVORIS
 # ==========================================
 @app.route('/favoris', methods=['POST'])
 def ajouter_favori():

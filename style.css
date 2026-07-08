@@ -1867,3 +1867,260 @@ body.dark-mode .bienvenue-close {
     from { opacity: 0; transform: translateY(30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ============================================
+   RESPONSIVE MOBILE – LEYAMO
+   ============================================ */
+
+/* 📱 Très petits écrans (moins de 480px) */
+@media (max-width: 480px) {
+    
+    /* ---- HEADER ---- */
+    header {
+        flex-direction: column;
+        align-items: center;
+        padding: 10px 12px;
+        gap: 6px;
+    }
+    .logo-zone h2 {
+        font-size: 16px;
+    }
+    .logo {
+        width: 40px;
+        height: 40px;
+    }
+    nav {
+        width: 100%;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    nav a {
+        font-size: 13px;
+        padding: 4px 6px;
+    }
+    .btn-darkmode {
+        font-size: 16px;
+    }
+
+    /* ---- HERO ---- */
+    .hero {
+        padding: 16px 12px;
+    }
+    .hero h1 {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+
+    /* ---- RECHERCHE ---- */
+    .search-input-wrapper {
+        border-radius: 30px;
+    }
+    .search-input-wrapper input {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    .search-input-wrapper .search-btn {
+        padding: 6px 12px;
+    }
+    .search-input-wrapper .search-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* ---- FILTRES (CATÉGORIES / GENRE / PRIX) ---- */
+    .filtre-container {
+        gap: 4px;
+        padding: 6px 0;
+    }
+    .groupe-filtres {
+        gap: 4px;
+        padding: 2px 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .groupe-filtres span {
+        font-size: 11px;
+        padding-right: 2px;
+    }
+    .filtre-btn,
+    .filtre-genre {
+        padding: 4px 10px;
+        font-size: 11px;
+        border-radius: 30px;
+        white-space: nowrap;
+    }
+    .filtre-prix {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 4px 8px;
+        border-radius: 30px;
+        gap: 4px;
+    }
+    .filtre-prix span {
+        font-size: 11px;
+    }
+    .filtre-prix input[type="range"] {
+        width: 80px;
+    }
+    .filtre-prix .prix-values {
+        font-size: 11px;
+    }
+
+    /* ---- PRODUITS (GRILLE) ---- */
+    .grille-produits {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .carte .image-produit {
+        height: 110px;
+    }
+    .carte .info-produit h3 {
+        font-size: 12px;
+    }
+    .carte .info-produit .prix {
+        font-size: 14px;
+    }
+    .carte .info-produit .categorie {
+        font-size: 10px;
+        padding: 1px 6px;
+    }
+    .carte .info-produit .btn {
+        font-size: 10px;
+        padding: 4px 6px;
+    }
+    .carte .info-produit .boutique-lien {
+        font-size: 10px;
+    }
+
+    /* ---- TOP VUES ---- */
+    .top-vues-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .top-vues-item .image-produit {
+        height: 100px;
+    }
+    .top-vues-item .info-produit h3 {
+        font-size: 12px;
+    }
+    .top-vues-item .info-produit .prix {
+        font-size: 13px;
+    }
+    .top-vues-item .info-produit .categorie {
+        font-size: 10px;
+    }
+    .top-vues-item .info-produit .vues-count {
+        font-size: 10px;
+    }
+    .top-vues-header h2 {
+        font-size: 16px;
+    }
+    .top-vues-badge {
+        font-size: 10px;
+        padding: 2px 10px;
+    }
+
+    /* ---- PAGINATION ---- */
+    #pagination button {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+    #pagination span {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    /* ---- COMPTEUR ---- */
+    #compteur-produits {
+        font-size: 12px;
+    }
+
+    /* ---- FOOTER ---- */
+    footer {
+        padding: 12px 16px;
+        font-size: 12px;
+    }
+
+    /* ---- BOUTON RETOUR EN HAUT ---- */
+    .back-to-top {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        bottom: 12px;
+        right: 12px;
+    }
+
+    /* ---- BANNIÈRE WHATSAPP ---- */
+    #banniere-whatsapp {
+        max-width: 260px;
+        padding: 12px 14px;
+        bottom: 12px;
+        right: 12px;
+        gap: 8px;
+    }
+    #banniere-whatsapp span:first-child {
+        font-size: 22px;
+    }
+    #banniere-whatsapp div {
+        font-size: 12px;
+    }
+    #banniere-whatsapp a {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+    #banniere-whatsapp .close {
+        font-size: 16px;
+    }
+
+    /* ---- MESSAGE DE BIENVENUE ---- */
+    #bienvenue-container {
+        padding: 10px 14px;
+        margin-bottom: 10px;
+    }
+    .bienvenue-texte {
+        font-size: 14px;
+    }
+    .bienvenue-texte span {
+        font-size: 12px !important;
+    }
+    .bienvenue-close {
+        font-size: 16px;
+    }
+}
+
+/* 📱 Écrans moyens (481px à 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+    .grille-produits {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .carte .image-produit {
+        height: 140px;
+    }
+    .top-vues-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    .filtre-btn,
+    .filtre-genre {
+        padding: 5px 14px;
+        font-size: 12px;
+    }
+    .filtre-prix input[type="range"] {
+        width: 100px;
+    }
+}
+
+/* 🖥️ Tablettes et petits écrans (769px à 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .grille-produits {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    .top-vues-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+}

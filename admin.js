@@ -193,6 +193,8 @@ function afficherProduitsAdmin(produits) {
                 <div style="display:flex;gap:8px;">
                     ${p.statut !== 'valide' ? `<button onclick="validerProduit(${p.id},'valide')" style="background:#16a34a;color:white;border:none;padding:6px 16px;border-radius:50px;cursor:pointer;">✅ Valider</button>` : ''}
                     ${p.statut !== 'refuse' ? `<button onclick="validerProduit(${p.id},'refuse')" style="background:#dc2626;color:white;border:none;padding:6px 16px;border-radius:50px;cursor:pointer;">❌ Refuser</button>` : ''}
+                     <!-- ✅ NOUVEAU BOUTON PUBLIER -->
+                     <button onclick="ouvrirModalPublicationAdmin(${p.id}, '${p.nom_produit}', ${p.prix}, '${p.categorie}', '${p.image_url || ''}')" style="background:#25D366;color:white;border:none;padding:6px 14px;border-radius:50px;cursor:pointer;font-weight:600;">📢 Publier</button>
                 </div>
             </div>
         `;
@@ -657,6 +659,140 @@ async function publierDepuisModal(produitId) {
         afficherNotification("Erreur lors de la publication", "error");
     }
 }
+
+// ============================================
+// PUBLICATION ADMIN (comme côté vendeur)
+// ============================================
+
+function ouvrirModalPublicationAdmin(id, nom, prix, categorie, image) {
+    const token = localStorage.getItem("token");
+    const csrf_token = localStorage.getItem("csrf_token");
+    if (!token) {
+        afficherNotification("Veuillez vous connecter", "error");
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-publication-admin';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 100000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 30px 32px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+    `;
+
+    const prixFormate = new Intl.NumberFormat('fr-FR').format(prix);
+    const lien = `${window.location.origin}/produit/${id}`;
+    const imageUrl = image || '';
+
+    modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="color:#064e3b;margin:0;">📢 Publier (admin)</h3>
+            <button onclick="fermerModalPublicationAdmin()" style="background:transparent;border:none;font-size:24px;cursor:pointer;">✕</button>
+        </div>
+        ${imageUrl ? `<img src="${imageUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">` : ''}
+        <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:16px;">
+            <p style="margin:0;font-weight:600;">${nom}</p>
+            <p style="margin:4px 0;color:#0f766e;font-weight:600;">${prixFormate} FCFA</p>
+            <p style="margin:0;font-size:13px;color:#64748b;">🏷️ ${categorie}</p>
+            <p style="margin:0;font-size:13px;color:#64748b;">🔗 ${lien}</p>
+        </div>
+
+        <label style="font-weight:600;display:block;margin-bottom:4px;">Plateforme</label>
+        <select id="plateforme-publier-admin" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">
+            <option value="whatsapp">📱 WhatsApp</option>
+            <option value="facebook">📘 Facebook</option>
+            <option value="twitter">🐦 Twitter/X</option>
+        </select>
+
+        <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé</label>
+        <textarea id="message-publier-admin" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${categorie}\n🔗 ${lien}</textarea>
+
+        <div style="display:flex;gap:10px;">
+            <button onclick="publierDepuisModalAdmin(${id})" style="flex:1;background:#25D366;color:white;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">📤 Publier</button>
+            <button onclick="fermerModalPublicationAdmin()" style="flex:1;background:#e2e8f0;color:#1e293b;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">Annuler</button>
+        </div>
+        <div id="resultat-publication-admin" style="margin-top:12px;text-align:center;"></div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+function fermerModalPublicationAdmin() {
+    const modal = document.getElementById('modal-publication-admin');
+    if (modal) modal.remove();
+}
+
+async function publierDepuisModalAdmin(produitId) {
+    const token = localStorage.getItem("token");
+    const csrf_token = localStorage.getItem("csrf_token");
+    const plateforme = document.getElementById('plateforme-publier-admin').value;
+    const message = document.getElementById('message-publier-admin').value.trim();
+    const resultatDiv = document.getElementById('resultat-publication-admin');
+
+    if (!token) {
+        afficherNotification("Veuillez vous connecter", "error");
+        return;
+    }
+    if (!message) {
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">⚠️ Veuillez saisir un message</span>';
+        return;
+    }
+
+    try {
+        const reponse = await fetch(`${API}/admin/produits/${produitId}/publier`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token,
+                "X-CSRF-Token": csrf_token
+            },
+            body: JSON.stringify({ plateforme, message })
+        });
+        const data = await reponse.json();
+
+        if (data.url) {
+            resultatDiv.innerHTML = `
+                <a href="${data.url}" target="_blank" style="color:#0f766e;text-decoration:underline;font-weight:600;">
+                    🔗 Ouvrir sur ${plateforme.charAt(0).toUpperCase() + plateforme.slice(1)}
+                </a>
+                <br><small style="color:#64748b;">✅ Lien généré avec succès</small>
+            `;
+            afficherNotification("✅ URL générée pour " + plateforme, "success");
+        } else {
+            resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${data.message || 'Erreur'}</span>`;
+        }
+    } catch (e) {
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">❌ Erreur réseau</span>';
+        afficherNotification("Erreur lors de la publication", "error");
+    }
+}
+
+// Exposer les fonctions globalement
+window.ouvrirModalPublicationAdmin = ouvrirModalPublicationAdmin;
+window.fermerModalPublicationAdmin = fermerModalPublicationAdmin;
+window.publierDepuisModalAdmin = publierDepuisModalAdmin;
 
 window.validerVendeur = validerVendeur;
 window.refuserVendeur = refuserVendeur;

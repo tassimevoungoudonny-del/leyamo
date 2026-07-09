@@ -8,10 +8,12 @@ document.addEventListener("DOMContentLoaded", function() {
 async function chargerAvis(produitId) {
     try {
         const reponse = await fetch(`${API}/produits/${produitId}/avis`);
+        if (!reponse.ok) {
+            throw new Error(`HTTP ${reponse.status}`);
+        }
         const data = await reponse.json();
+
         let section = document.getElementById("avis-section");
-        
-        // Si la section n'existe pas, on la crée
         if (!section) {
             section = document.createElement("div");
             section.id = "avis-section";
@@ -20,14 +22,17 @@ async function chargerAvis(produitId) {
             if (fiche) fiche.appendChild(section);
         }
 
-        const etoiles = "⭐".repeat(Math.round(data.moyenne || 0)) + "☆".repeat(5 - Math.round(data.moyenne || 0));
+        // S'assurer que moyenne est un nombre
+        const moyenne = (typeof data.moyenne === 'number') ? data.moyenne : 0;
+        const total = data.total || 0;
+        const etoiles = "⭐".repeat(Math.round(moyenne)) + "☆".repeat(5 - Math.round(moyenne));
 
         section.innerHTML = `
             <h3>📝 Avis</h3>
             <div class="avis-moyenne">
-                <span class="note">${data.moyenne ? data.moyenne.toFixed(1) : '0'}</span>
+                <span class="note">${moyenne ? moyenne.toFixed(1) : '0'}</span>
                 <span class="etoiles">${etoiles}</span>
-                <span style="color:#64748b;">(${data.total || 0} avis)</span>
+                <span style="color:#64748b;">(${total} avis)</span>
             </div>
             <div id="liste-avis">
                 ${data.data.map(a => `
@@ -58,7 +63,9 @@ async function chargerAvis(produitId) {
     } catch (e) {
         console.error("Erreur avis", e);
         const section = document.getElementById("avis-section");
-        if (section) section.innerHTML = "<p style='color:#dc2626;'>Erreur de chargement des avis</p>";
+        if (section) {
+            section.innerHTML = "<p style='color:#dc2626;'>❌ Erreur de chargement des avis. Veuillez réessayer.</p>";
+        }
     }
 }
 
@@ -80,11 +87,11 @@ async function ajouterAvis(produitId) {
             afficherNotification("❌ " + data.message, "error");
         }
     } catch (e) {
-        afficherNotification("Erreur réseau", "error");
+        afficherNotification("❌ Erreur réseau", "error");
     }
 }
 
-// Rendre l'image principale cliquable pour l'agrandir
+// Agrandir l'image principale en cliquant (lightbox)
 document.addEventListener('DOMContentLoaded', function() {
     const img = document.getElementById('image-principale');
     if (img) {
@@ -99,10 +106,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Enregistrer le clic WhatsApp
+// Enregistrer le clic sur "Commander sur WhatsApp"
 document.addEventListener("click", function(e) {
     if (e.target.id === "btn-whatsapp") {
         const id = window.location.pathname.split('/').pop();
         fetch(`${API}/produits/${id}/whatsapp`, { method: "POST" }).catch(() => {});
     }
 });
+
+// Exposer les fonctions globalement si nécessaire
+window.ajouterAvis = ajouterAvis;
+window.chargerAvis = chargerAvis;

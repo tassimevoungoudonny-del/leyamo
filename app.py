@@ -1433,6 +1433,50 @@ def get_favoris(email):
     conn.close()
     return jsonify({"status": "success", "data": produits})
 
+from flask import render_template  # assure-toi d’avoir cet import en haut
+
+@app.route('/produit/<int:id>')
+def afficher_produit_html(id):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT produits.*, vendeurs.nom_boutique, vendeurs.num_whatsapp,
+               vendeurs.localisation_boutique, vendeurs.localisation_detaillee
+        FROM produits JOIN vendeurs ON produits.id_vendeur = vendeurs.id
+        WHERE produits.id = %s
+    """, (id,))
+    produit = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not produit:
+        return "Produit introuvable", 404
+
+    # Récupérer les images
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT image_url FROM images_produits WHERE produit_id = %s ORDER BY ordre ASC", (id,))
+    images = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    produit["images"] = [img["image_url"] for img in images]
+
+    image_og = produit["images"][0] if produit["images"] else "https://via.placeholder.com/800x400"
+    titre_og = produit["nom_produit"]
+    description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
+    url_og = f"{FRONTEND_URL}/produit/{id}"
+
+    return render_template(
+        "produit.html",
+        produit=produit,
+        image_og=image_og,
+        titre_og=titre_og,
+        description_og=description_og,
+        url_og=url_og,
+        FRONTEND_URL=FRONTEND_URL
+    )
+
 # ==========================================
 # LANCEMENT
 # ==========================================

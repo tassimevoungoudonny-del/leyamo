@@ -72,6 +72,22 @@ async function ajouterAvis(produitId) {
     }
 }
 
+// Rendre l'image principale cliquable pour l'agrandir
+document.addEventListener('DOMContentLoaded', function() {
+    const img = document.getElementById('image-principale');
+    if (img) {
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', function() {
+            if (typeof ouvrirLightbox === 'function') {
+                ouvrirLightbox(this.src);
+            } else {
+                // fallback : ouvrir dans un nouvel onglet
+                window.open(this.src, '_blank');
+            }
+        });
+    }
+});
+
 document.addEventListener("click", function(e) {
     if (e.target.id === "btn-whatsapp") {
         const id = window.location.pathname.split('/').pop();

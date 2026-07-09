@@ -424,6 +424,50 @@ document.addEventListener("DOMContentLoaded", function() {
     console.log("✅ Initialisation terminée.");
 });
 
+function ouvrirLightbox(src) {
+    const existing = document.getElementById('lightbox-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'lightbox-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.92);
+        z-index: 100000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        padding: 20px;
+        animation: fadeIn 0.3s ease;
+    `;
+    const img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = `
+        max-width: 95%;
+        max-height: 95%;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+    `;
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function() {
+        this.remove();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const ov = document.getElementById('lightbox-overlay');
+            if (ov) ov.remove();
+        }
+    });
+}
+
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;
 window.signalerProduit = signalerProduit;

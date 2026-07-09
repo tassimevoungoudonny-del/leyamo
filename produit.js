@@ -9,8 +9,17 @@ async function chargerAvis(produitId) {
     try {
         const reponse = await fetch(`${API}/produits/${produitId}/avis`);
         const data = await reponse.json();
-        const section = document.getElementById("avis-section");
-        if (!section) return;
+        let section = document.getElementById("avis-section");
+        
+        // Si la section n'existe pas, on la crée
+        if (!section) {
+            section = document.createElement("div");
+            section.id = "avis-section";
+            section.className = "avis-section";
+            const fiche = document.querySelector(".fiche-produit");
+            if (fiche) fiche.appendChild(section);
+        }
+
         const etoiles = "⭐".repeat(Math.round(data.moyenne || 0)) + "☆".repeat(5 - Math.round(data.moyenne || 0));
         section.innerHTML = `
             <h3>📝 Avis</h3>
@@ -41,8 +50,8 @@ async function chargerAvis(produitId) {
                     <option value="2">⭐⭐ (2)</option>
                     <option value="1">⭐ (1)</option>
                 </select>
-                <textarea id="avis-commentaire" placeholder="Votre commentaire..."></textarea>
-                <button onclick="ajouterAvis(${produitId})">Envoyer</button>
+                <textarea id="avis-commentaire" placeholder="Votre commentaire..." style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;margin:8px 0;min-height:60px;"></textarea>
+                <button onclick="ajouterAvis(${produitId})" style="background:#0f766e;color:white;border:none;padding:8px 20px;border-radius:50px;cursor:pointer;font-weight:600;">Envoyer</button>
             </div>
         `;
     } catch (e) {
@@ -63,6 +72,7 @@ async function ajouterAvis(produitId) {
         const data = await reponse.json();
         if (reponse.status === 201) {
             afficherNotification("✅ Avis ajouté", "success");
+            // Recharger les avis pour afficher le nouveau
             chargerAvis(produitId);
         } else {
             afficherNotification("❌ " + data.message, "error");

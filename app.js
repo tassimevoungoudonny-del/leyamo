@@ -147,6 +147,14 @@ async function rechercherProduit(page = 1) {
         const data = await reponse.json();
         afficherProduits(data.resultats);
         afficherPagination(data.pagination);
+         // ---- AJOUT : mettre à jour le compteur avec le total de la recherche ----
+        const compteur = document.getElementById("compteur-produits");
+        if (compteur) {
+            const total = data.pagination?.total || 0;
+            compteur.textContent = total === 0 ? "Aucun produit trouvé" :
+                                    total === 1 ? "1 produit trouvé" :
+                                    `${total} produits trouvés`;
+        }
         document.getElementById("autocomplete-list")?.classList.remove("active");
     } catch (erreur) {
         afficherNotification("Erreur lors de la recherche", "error");

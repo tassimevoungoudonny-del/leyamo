@@ -88,6 +88,12 @@
     const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
     const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
     window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
+
+    function partagerWhatsApp() {
+    const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
+    const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
+    window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
+}2
 }
 
 function partagerFacebook() {

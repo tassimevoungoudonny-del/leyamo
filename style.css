@@ -1898,8 +1898,8 @@ body.dark-mode .bienvenue-close {
         padding: 4px 0;
     }
     .logo {
-        width: 72px;   /* ENCORE PLUS GRAND */
-        height: 72px;
+        width: 90px;   /* ENCORE PLUS GRAND */
+        height: 90px;
         border-radius: 50%;
         object-fit: contain;
         border: 2px solid #0f766e;

@@ -21,7 +21,7 @@
 <body>
 <div class="fiche-produit">
     <div id="galerie">
-        <img id="image-principale" src="{{ image_og }}" alt="Photo du produit">
+        <img id="image-principale" src="{{ produit.images[0] if produit.images else image_og }}" alt="Photo du produit">
         <div id="miniatures">
             {% for img in produit.images %}
                 <img src="{{ img }}" class="{% if loop.index0 == 0 %}active{% endif %}" onclick="changeImage(this)">

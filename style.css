@@ -1243,6 +1243,7 @@ footer span {
     margin-bottom: 12px;
     border: 2px solid #d1fae5;
     cursor: pointer;
+    background: #f8fafc;  
 }
 #miniatures {
     display: flex;
@@ -1854,7 +1855,7 @@ body.dark-mode .bienvenue-close {
         margin: 40px auto;
     }
     #image-principale {
-        max-height: 380px;
+        max-height: 350px;
     }
     .fiche-produit h1 {
         font-size: 30px;

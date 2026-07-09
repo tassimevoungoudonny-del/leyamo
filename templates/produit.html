@@ -86,15 +86,15 @@
     }
 
 function partagerWhatsApp() {
-    const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
+    const url = encodeURIComponent("{{ url_og }}");  // ← utilise l’URL avec version
     const nom = document.getElementById('nom').textContent;
     const prix = document.getElementById('prix').textContent;
-    const texte = encodeURIComponent(`🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prix}\n🔗 ${window.location.href}`);
+    const texte = encodeURIComponent(`🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prix}\n🔗 ${url}`);
     window.open(`https://wa.me/?text=${texte}`, "_blank");
 }
 
 function partagerFacebook() {
-    const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
+    const url = encodeURIComponent("{{ url_og }}");
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
 }
 

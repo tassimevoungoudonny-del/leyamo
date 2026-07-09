@@ -308,20 +308,25 @@ def afficher_produit_html(id):
 
     produit["images"] = [img["image_url"] for img in images]
 
-    # --- Transformation Cloudinary pour une image plus grande (1200x630) ---
+    # --- Image OG avec redimensionnement Cloudinary ---
     if produit["images"]:
         image_og = produit["images"][0]
-        # Si c'est une URL Cloudinary, on la redimensionne en 1200x630
         if 'cloudinary' in image_og and '/upload/' in image_og:
             parts = image_og.split('/upload/')
             image_og = parts[0] + '/upload/w_1200,h_630,c_fill/' + parts[1]
     else:
-        # Image par défaut (logo)
         image_og = f"{FRONTEND_URL}/logo.webp"
+
+    # --- URL OG avec version (cache-buster) ---
+    version = produit.get('updated_at') or produit.get('date_creation')
+    if version:
+        version_str = str(int(version.timestamp()))
+    else:
+        version_str = "1"
+    url_og = f"{FRONTEND_URL}/produit/{id}?v={version_str}"
 
     titre_og = produit["nom_produit"]
     description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
-    url_og = f"{FRONTEND_URL}/produit/{id}"
 
     return render_template(
         "produit.html",

@@ -1876,33 +1876,39 @@ body.dark-mode .bienvenue-close {
 /* ============================================
    TABLETTE (max-width: 768px) - MOBILE GRAND
    ============================================ */
+/* ============================================
+   MOBILE : HEADER SUR 2 LIGNES + LOGO GRAND
+   ============================================ */
 @media (max-width: 768px) {
-    /* ---- HEADER : logo à gauche, nav à droite ---- */
+    /* ---- HEADER : deux lignes ---- */
     header {
-        padding: 10px 16px;
+        padding: 8px 12px;
         display: flex;
-        justify-content: space-between;
+        flex-direction: column;
         align-items: center;
-        flex-wrap: nowrap;
-        gap: 8px;
+        gap: 4px;
+        flex-wrap: wrap;
     }
     .logo-zone {
         display: flex;
         align-items: center;
         gap: 10px;
-        flex-shrink: 0;
+        justify-content: center;
+        width: 100%;
+        padding: 4px 0;
     }
     .logo {
-        width: 56px;
-        height: 56px;
+        width: 72px;   /* ENCORE PLUS GRAND */
+        height: 72px;
         border-radius: 50%;
         object-fit: contain;
         border: 2px solid #0f766e;
         background: white;
         padding: 3px;
+        flex-shrink: 0;
     }
     .logo-zone h2 {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: 700;
         color: #1e293b;
         margin: 0;
@@ -1913,13 +1919,14 @@ body.dark-mode .bienvenue-close {
     }
     nav {
         display: flex;
-        gap: 8px;
+        gap: 12px;
         align-items: center;
-        flex-shrink: 0;
-        margin-left: auto;
+        justify-content: center;
+        width: 100%;
+        padding: 4px 0;
     }
     nav a {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         color: #1e293b;
         padding: 4px 8px;
@@ -1934,9 +1941,10 @@ body.dark-mode .bienvenue-close {
         background: transparent;
         border: none;
         cursor: pointer;
+        line-height: 1;
     }
 
-    /* ---- HERO & RECHERCHE ---- */
+    /* ---- Le reste est inchangé ---- */
     .hero {
         padding: 16px 12px;
     }
@@ -1984,7 +1992,6 @@ body.dark-mode .bienvenue-close {
         display: none;
     }
 
-    /* ---- FILTRES ---- */
     .filtre-container {
         padding: 6px 0;
         gap: 6px;
@@ -2056,7 +2063,6 @@ body.dark-mode .bienvenue-close {
         font-weight: 600;
     }
 
-    /* ---- GRILLE PRODUITS (2 colonnes) ---- */
     .grille-produits {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -2120,7 +2126,6 @@ body.dark-mode .bienvenue-close {
         font-size: 12px;
     }
 
-    /* ---- COMPTEUR & PAGINATION ---- */
     #compteur-produits {
         font-size: 14px;
         text-align: center;
@@ -2143,7 +2148,6 @@ body.dark-mode .bienvenue-close {
         font-size: 14px;
     }
 
-    /* ---- FOOTER ---- */
     footer {
         padding: 14px 16px;
         font-size: 13px;
@@ -2151,7 +2155,7 @@ body.dark-mode .bienvenue-close {
     }
 }
 
-/* ---- TRÈS PETITS ÉCRANS (max-width: 420px) ---- */
+/* ---- TRÈS PETITS ÉCRANS ---- */
 @media (max-width: 420px) {
     .grille-produits {
         gap: 8px;
@@ -2172,23 +2176,25 @@ body.dark-mode .bienvenue-close {
         min-height: 38px;
     }
     .logo {
-        width: 48px;
-        height: 48px;
+        width: 64px;
+        height: 64px;
     }
     .logo-zone h2 {
-        font-size: 17px;
+        font-size: 18px;
     }
     nav a {
-        font-size: 12px;
-        padding: 2px 6px;
+        font-size: 13px;
+        padding: 4px 6px;
     }
     .filtre-btn,
     .filtre-genre {
         font-size: 12px;
         padding: 4px 12px;
     }
+    .btn-darkmode {
+        font-size: 16px;
+    }
 }
-
 /* ---- DÉSACTIVER L'ANIMATION SUR PETITS ÉCRANS (optionnel) ---- */
 @media (max-width: 480px) {
     .carte .info-produit .btn.commander {

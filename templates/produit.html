@@ -9,6 +9,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="{{ url_og }}" />
+    <meta property="og:image:secure_url" content="{{ image_og }}" />
     <meta property="og:type" content="product" />
     <meta property="og:site_name" content="Leyamo" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -84,16 +85,12 @@
         window.open(`https://wa.me/237${num}?text=${message}`, "_blank");
     }
 
-    function partagerWhatsApp() {
+function partagerWhatsApp() {
     const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
-    const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
-    window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
-
-    function partagerWhatsApp() {
-    const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
-    const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
-    window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
-}2
+    const nom = document.getElementById('nom').textContent;
+    const prix = document.getElementById('prix').textContent;
+    const texte = encodeURIComponent(`🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prix}\n🔗 ${window.location.href}`);
+    window.open(`https://wa.me/?text=${texte}`, "_blank");
 }
 
 function partagerFacebook() {

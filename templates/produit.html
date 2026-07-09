@@ -83,15 +83,15 @@
     }
 
     function partagerWhatsApp() {
-        const url = encodeURIComponent(window.location.href);
-        const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
-        window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
-    }
+    const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
+    const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n{{ produit.nom_produit }}\n💰 {{ produit.prix }} FCFA`);
+    window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
+}
 
-    function partagerFacebook() {
-        const url = encodeURIComponent(window.location.href);
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
-    }
+function partagerFacebook() {
+    const url = encodeURIComponent(window.location.href + '?t=' + Date.now());
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
+}
 
     function copierLien() {
         navigator.clipboard.writeText(window.location.href)

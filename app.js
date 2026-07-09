@@ -22,9 +22,7 @@ function afficherLoader(actif) {
 function toggleDarkMode() {
     document.body.classList.toggle("dark-mode");
     const btn = document.querySelector(".btn-darkmode");
-    if (btn) {
-        btn.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
-    }
+    if (btn) btn.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
     localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
 }
 
@@ -50,12 +48,8 @@ function getUrlParams() {
     const params = new URLSearchParams();
     params.set('page', 1);
     params.set('limit', limit);
-    if (categorieActuelle && categorieActuelle !== 'all') {
-        params.set('categorie', categorieActuelle);
-    }
-    if (genreActuel && genreActuel !== 'all') {
-        params.set('genre', genreActuel);
-    }
+    if (categorieActuelle && categorieActuelle !== 'all') params.set('categorie', categorieActuelle);
+    if (genreActuel && genreActuel !== 'all') params.set('genre', genreActuel);
     if (prixMin > 0) params.set('prix_min', prixMin);
     if (prixMax < 100000) params.set('prix_max', prixMax);
     return params;
@@ -64,31 +58,24 @@ function getUrlParams() {
 async function chargerProduits(page = 1) {
     const filtres = document.querySelectorAll('.filtre-btn, .filtre-genre');
     filtres.forEach(btn => btn.disabled = true);
-
     const params = getUrlParams();
     params.set('page', page);
     const url = `${API}/produits/filtrer?${params}`;
     console.log("🔍 Appel API :", url);
-
     afficherLoader(true);
-
     try {
         const reponse = await fetch(url);
         const data = await reponse.json();
         console.log("✅ Données reçues :", data);
-
         afficherProduits(data.data);
         afficherPagination(data.pagination);
-
         const compteur = document.getElementById("compteur-produits");
         if (compteur) {
             const total = data.pagination?.total || 0;
-            const message = total === 0 ? "Aucun produit trouvé" :
-                            total === 1 ? "1 produit trouvé" :
-                            `${total} produits trouvés`;
-            compteur.textContent = message;
+            compteur.textContent = total === 0 ? "Aucun produit trouvé" :
+                                    total === 1 ? "1 produit trouvé" :
+                                    `${total} produits trouvés`;
         }
-
     } catch (erreur) {
         console.error("❌ Erreur :", erreur);
         afficherNotification("Erreur de chargement", "error");
@@ -105,7 +92,6 @@ async function appliquerFiltres(page = 1) {
 }
 
 let autocompleteTimeout;
-
 async function autocomplete(q) {
     try {
         const reponse = await fetch(`${API}/produits/autocomplete?q=${encodeURIComponent(q)}`);
@@ -136,9 +122,7 @@ function afficherAutocomplete(resultats) {
                 <div class="prix">${formaterPrix(item.prix)} FCFA</div>
             </div>
         `;
-        div.addEventListener("click", () => {
-            window.location.href = `/produit/${item.id}`;
-        });
+        div.addEventListener("click", () => window.location.href = `/produit/${item.id}`);
         list.appendChild(div);
     });
 }
@@ -349,15 +333,55 @@ async function signalerProduit(id, nom) {
     }
 }
 
+async function chargerTopVues() {
+    try {
+        const reponse = await fetch(`${API}/produits/top-vues`);
+        const data = await reponse.json();
+        const container = document.getElementById("top-vues-container");
+        if (!container) return;
+        if (!data.data || data.data.length === 0) {
+            container.innerHTML = `<p style="text-align:center;color:#64748b;">Aucun produit tendance</p>`;
+            return;
+        }
+        container.innerHTML = "";
+        data.data.slice(0, 3).forEach(p => {
+            const image = p.image_url || DEFAULT_IMAGE;
+            const prix = formaterPrix(p.prix);
+            const promotion = p.promotion || 0;
+            let prixHtml = `<span class="prix">${prix} FCFA</span>`;
+            if (promotion > 0) {
+                const prixPromo = formaterPrix(p.prix * (1 - promotion / 100));
+                prixHtml = `
+                    <span class="prix-barre">${prix} FCFA</span>
+                    <span class="prix">${prixPromo} FCFA</span>
+                    <span class="badge-promo">-${promotion}%</span>
+                `;
+            }
+            container.innerHTML += `
+                <div class="top-vues-item carte" onclick="window.location.href='/produit/${p.id}'">
+                    <img src="${image}" class="image-produit" alt="${p.nom_produit}">
+                    <div class="info-produit">
+                        <h3>${p.nom_produit}</h3>
+                        <div>${prixHtml}</div>
+                        <span class="categorie">${p.categorie}</span>
+                        <span class="vues-count">👁 ${p.vues} vues</span>
+                        <a href="/produit/${p.id}" class="btn voir" onclick="event.stopPropagation();">Voir</a>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.error("Erreur top vues", e);
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     console.log("🚀 DOM chargé, initialisation...");
-
     const darkBtn = document.querySelector(".btn-darkmode");
     if (darkBtn && localStorage.getItem("darkMode") === "true") {
         document.body.classList.add("dark-mode");
         darkBtn.textContent = "☀️";
     }
-
     const rechercheInput = document.getElementById("recherche");
     if (rechercheInput) {
         rechercheInput.addEventListener("input", function() {
@@ -375,39 +399,30 @@ document.addEventListener("DOMContentLoaded", function() {
             if (e.key === "Enter") rechercherProduit(1);
         });
     }
-
     const clearBtn = document.getElementById("clear-search");
     if (clearBtn) {
         clearBtn.addEventListener("click", reinitialiserRecherche);
     }
-
     document.addEventListener("click", function(e) {
         const catBtn = e.target.closest(".filtre-btn");
         if (catBtn) {
-            console.log("🔵 Clic catégorie :", catBtn.dataset.categorie);
             document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
             catBtn.classList.add("active");
             categorieActuelle = catBtn.dataset.categorie;
-            console.log("🟢 Nouvelle catégorie :", categorieActuelle);
             chargerProduits(1);
         }
-
         const genreBtn = e.target.closest(".filtre-genre");
         if (genreBtn) {
-            console.log("🔵 Clic genre :", genreBtn.dataset.genre);
             document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
             genreBtn.classList.add("active");
             genreActuel = genreBtn.dataset.genre;
-            console.log("🟢 Nouveau genre :", genreActuel);
             chargerProduits(1);
         }
     });
-
     const prixMinInput = document.getElementById("prix-min");
     const prixMaxInput = document.getElementById("prix-max");
     const prixMinLabel = document.getElementById("prix-min-label");
     const prixMaxLabel = document.getElementById("prix-max-label");
-
     if (prixMinInput) {
         prixMinInput.addEventListener("input", function() {
             prixMin = parseInt(this.value);
@@ -422,7 +437,6 @@ document.addEventListener("DOMContentLoaded", function() {
             chargerProduits(1);
         });
     }
-
     const limitSelect = document.getElementById("limit-select");
     if (limitSelect) {
         limitSelect.addEventListener("change", function() {
@@ -430,7 +444,6 @@ document.addEventListener("DOMContentLoaded", function() {
             chargerProduits(1);
         });
     }
-
     const viewGrid = document.getElementById("view-grid");
     const viewList = document.getElementById("view-list");
     if (viewGrid) {
@@ -447,8 +460,8 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("liste-produits")?.classList.add("liste");
         });
     }
-
     chargerProduits(1);
+    chargerTopVues();
     console.log("✅ Initialisation terminée.");
 });
 

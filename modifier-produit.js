@@ -13,7 +13,9 @@ async function chargerProduit() {
         document.getElementById("description_produit").value = p.description_produit;
         document.getElementById("prix").value = p.prix;
         document.getElementById("categorie").value = p.categorie;
+        document.getElementById("genre").value = p.genre || 'unisexe';
         document.getElementById("image_url").value = p.image_url || "";
+        document.getElementById("info-produit").textContent = `Produit #${id} - Statut : ${p.statut}`;
     } catch (erreur) {
         afficherNotification("Erreur de chargement", "error");
     }
@@ -27,11 +29,11 @@ async function modifierProduit() {
         window.location.href = "/connexion";
         return;
     }
-
     const nom_produit = document.getElementById("nom_produit").value.trim();
     const description_produit = document.getElementById("description_produit").value.trim();
     const prix = document.getElementById("prix").value;
     const categorie = document.getElementById("categorie").value;
+    const genre = document.getElementById("genre").value;
     const image_url = document.getElementById("image_url").value.trim();
 
     if (!nom_produit || !prix || !categorie) {
@@ -47,10 +49,15 @@ async function modifierProduit() {
                 "Authorization": token,
                 "X-CSRF-Token": csrf_token
             },
-            body: JSON.stringify({ nom_produit, description_produit, prix, categorie, image_url })
+            body: JSON.stringify({ nom_produit, description_produit, prix, categorie, genre, image_url })
         });
         const data = await reponse.json();
-        reponse.status === 200 ? afficherNotification("✅ " + data.message, "success") : afficherNotification("❌ " + data.message, "error");
+        if (reponse.status === 200) {
+            afficherNotification("✅ " + data.message, "success");
+            window.location.href = "/dashboard";
+        } else {
+            afficherNotification("❌ " + data.message, "error");
+        }
     } catch (erreur) {
         afficherNotification("Erreur réseau", "error");
     }

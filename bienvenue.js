@@ -14,12 +14,4 @@
             localStorage.setItem(STORAGE_KEY, Date.now().toString());
         }
     };
-
-    document.addEventListener('click', function(e) {
-        const container = document.getElementById('bienvenue-container');
-        if (!container) return;
-        if (!container.contains(e.target) && !e.target.closest('.bienvenue-close')) {
-            // Ne pas fermer automatiquement
-        }
-    });
 })();

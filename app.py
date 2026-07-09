@@ -6,7 +6,7 @@ import logging
 import requests
 from datetime import datetime, timedelta
 from functools import wraps, lru_cache
-from flask import Flask, jsonify, request, send_from_directory, session
+from flask import Flask, jsonify, request, send_from_directory, session, render_template
 from flask_cors import CORS
 from flask_compress import Compress
 from dotenv import load_dotenv
@@ -26,14 +26,8 @@ app = Flask(__name__)
 app.secret_key = JWT_SECRET
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5000", "http://localhost:5000", "https://*.onrender.com"])
 
-# ==========================================
-# COMPRESSION GZIP
-# ==========================================
 Compress(app)
 
-# ==========================================
-# INITIALISATION CLOUDINARY
-# ==========================================
 cloudinary.config(
     cloud_name=CLOUDINARY_CONFIG['cloud_name'],
     api_key=CLOUDINARY_CONFIG['api_key'],
@@ -212,7 +206,7 @@ def formater_prix(prix):
     return f"{int(prix):,}".replace(',', ' ')
 
 # ==========================================
-# CACHE LRU POUR CATÉGORIES
+# CACHE
 # ==========================================
 @lru_cache(maxsize=128)
 def get_cached_categories():
@@ -230,7 +224,7 @@ def invalidate_product_cache():
     get_cached_categories.cache_clear()
 
 # ==========================================
-# ROUTES POUR LES PAGES HTML
+# ROUTES PAGES HTML
 # ==========================================
 @app.route('/')
 def index():
@@ -280,10 +274,15 @@ def confirmer_email_page():
 def reset_password_page():
     return send_from_directory('.', 'reset-password.html')
 
+# ==========================================
+# ROUTE PRODUIT (avec render_template)
+# ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
-    # Récupérer les données du produit
     conn = obtenir_connexion()
+    if not conn:
+        return "Erreur de connexion à la base de données", 500
+
     cur = conn.cursor()
     cur.execute("""
         SELECT produits.*, vendeurs.nom_boutique, vendeurs.num_whatsapp,
@@ -293,50 +292,43 @@ def afficher_produit_html(id):
     """, (id,))
     produit = cur.fetchone()
     cur.close()
-    conn.close()
     if not produit:
+        conn.close()
         return "Produit introuvable", 404
-    
-    conn = obtenir_connexion()
+
+    # Récupérer les images
     cur = conn.cursor()
     cur.execute("SELECT image_url FROM images_produits WHERE produit_id = %s ORDER BY ordre ASC", (id,))
     images = cur.fetchall()
     cur.close()
     conn.close()
+
     produit["images"] = [img["image_url"] for img in images]
+
     image_og = produit["images"][0] if produit["images"] else "https://via.placeholder.com/800x400"
     titre_og = produit["nom_produit"]
     description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
     url_og = f"{FRONTEND_URL}/produit/{id}"
-    
-    # Servir le fichier HTML et remplacer les variables
-    with open('produit.html', 'r', encoding='utf-8') as f:
-        html = f.read()
-    
-    # Remplacer les variables Jinja
-    html = html.replace('{{ produit.nom_produit }}', str(produit['nom_produit']))
-    html = html.replace('{{ produit.prix }}', str(produit['prix']))
-    html = html.replace('{{ produit.categorie }}', str(produit['categorie'] or ''))
-    html = html.replace('{{ produit.description_produit }}', str(produit['description_produit'] or ''))
-    html = html.replace('{{ produit.localisation_detaillee or produit.localisation_boutique or "Non renseigné" }}', str(produit.get('localisation_detaillee') or produit.get('localisation_boutique') or 'Non renseigné'))
-    html = html.replace('{{ produit.vues or 0 }}', str(produit.get('vues') or 0))
-    html = html.replace('{{ produit.nom_boutique or "Boutique" }}', str(produit.get('nom_boutique') or 'Boutique'))
-    html = html.replace('{{ produit.num_whatsapp or "" }}', str(produit.get('num_whatsapp') or ''))
-    html = html.replace('{{ produit.id_vendeur }}', str(produit['id_vendeur']))
-    html = html.replace('{{ titre_og }}', str(titre_og))
-    html = html.replace('{{ description_og }}', str(description_og))
-    html = html.replace('{{ image_og }}', str(image_og))
-    html = html.replace('{{ url_og }}', str(url_og))
-    html = html.replace('{{ FRONTEND_URL }}', str(FRONTEND_URL))
-    
-    # Générer les miniatures
-    miniatures_html = ''
-    for idx, img in enumerate(produit['images']):
-        active_class = 'active' if idx == 0 else ''
-        miniatures_html += f'<img src="{img}" class="{active_class}" onclick="changeImage(this)">'
-    html = html.replace('{% for img in produit.images %}...{% endfor %}', miniatures_html)
-    
-    return html
+
+    return render_template(
+        "produit.html",
+        produit=produit,
+        image_og=image_og,
+        titre_og=titre_og,
+        description_og=description_og,
+        url_og=url_og,
+        FRONTEND_URL=FRONTEND_URL
+    )
+
+# ==========================================
+# SERVEUR STATIQUE
+# ==========================================
+@app.route('/<path:path>')
+def serve_static(path):
+    try:
+        return send_from_directory('.', path)
+    except FileNotFoundError:
+        return jsonify({"error": "Fichier non trouvé"}), 404
 
 # ==========================================
 # API ROUTES
@@ -362,16 +354,6 @@ def test_db():
             return {"status": "DB FAIL", "message": "Échec de connexion"}, 500
     except Exception as e:
         return {"status": "DB ERROR", "message": str(e)}, 500
-
-# ==========================================
-# SERVEUR DE FICHIERS STATIQUES (CSS, JS, images)
-# ==========================================
-@app.route('/<path:path>')
-def serve_static(path):
-    try:
-        return send_from_directory('.', path)
-    except FileNotFoundError:
-        return jsonify({"error": "Fichier non trouvé"}), 404
 
 # ==========================================
 # AUTHENTIFICATION VENDEUR
@@ -839,7 +821,8 @@ def modifier_produit(id):
                 prix=%s,
                 promotion=%s,
                 categorie=%s,
-                image_url=%s
+                image_url=%s,
+                genre=%s
             WHERE id=%s
         """, (
             data.get('nom_produit'),
@@ -848,6 +831,7 @@ def modifier_produit(id):
             data.get('promotion', 0),
             data.get('categorie'),
             data.get('image_url'),
+            data.get('genre', 'unisexe'),
             id
         ))
         cur.execute("UPDATE produits SET statut = 'en_attente' WHERE id = %s", (id,))
@@ -1138,8 +1122,13 @@ def admin_produits():
         requete += " ORDER BY p.date_creation ASC"
     else:
         requete += " ORDER BY p.date_creation DESC"
-    count_requete = f"SELECT COUNT(*) as total FROM ({requete}) as sous_requete"
-    cur.execute(count_requete, params)
+    # Compter le total correctement
+    count_requete = f"SELECT COUNT(*) as total FROM produits p JOIN vendeurs v ON p.id_vendeur = v.id WHERE 1=1"
+    count_params = []
+    if statut:
+        count_requete += " AND p.statut = %s"
+        count_params.append(statut)
+    cur.execute(count_requete, count_params)
     total = cur.fetchone()['total']
     requete += " LIMIT %s OFFSET %s"
     params.extend([limit, offset])
@@ -1206,6 +1195,44 @@ def admin_publier_produit(id):
     log_action("admin_publier_produit", f"Produit ID: {id}, Plateforme: {plateforme}", request.remote_addr)
     return jsonify({"status": "success", "message": "URL de partage générée", "url": url})
 
+# ==========================================
+# AJOUT DE LA ROUTE VENDEUR POUR PUBLIER
+# ==========================================
+@app.route('/vendeurs/produits/<int:id>/publier', methods=['POST'])
+@require_csrf
+def vendeur_publier_produit(id):
+    token = request.headers.get("Authorization")
+    id_vendeur = get_vendeur_id(token)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "Non authentifié"}), 401
+
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("SELECT id_vendeur, nom_produit FROM produits WHERE id = %s", (id,))
+    produit = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not produit or produit["id_vendeur"] != id_vendeur:
+        return jsonify({"status": "error", "message": "Accès refusé"}), 403
+
+    data = request.get_json()
+    plateforme = data.get('plateforme')
+    message = data.get('message', '')
+
+    if plateforme == 'whatsapp':
+        url = f"https://wa.me/?text={message}"
+    elif plateforme == 'facebook':
+        url = f"https://www.facebook.com/sharer/sharer.php?u={message}"
+    else:
+        return jsonify({"status": "error", "message": "Plateforme non supportée"}), 400
+
+    log_action("vendeur_publier_produit", f"Produit ID: {id}, Plateforme: {plateforme}", request.remote_addr)
+    return jsonify({"status": "success", "message": "URL de partage générée", "url": url})
+
+# ==========================================
+# ADMIN STATS, LOGS, NOTIFICATIONS, SIGNALEMENTS
+# ==========================================
 @app.route('/admin/stats', methods=['GET'])
 def admin_stats():
     if not get_admin_id(request.headers.get("Authorization")):
@@ -1432,50 +1459,6 @@ def get_favoris(email):
     cur.close()
     conn.close()
     return jsonify({"status": "success", "data": produits})
-
-from flask import render_template  # assure-toi d’avoir cet import en haut
-
-@app.route('/produit/<int:id>')
-def afficher_produit_html(id):
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT produits.*, vendeurs.nom_boutique, vendeurs.num_whatsapp,
-               vendeurs.localisation_boutique, vendeurs.localisation_detaillee
-        FROM produits JOIN vendeurs ON produits.id_vendeur = vendeurs.id
-        WHERE produits.id = %s
-    """, (id,))
-    produit = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not produit:
-        return "Produit introuvable", 404
-
-    # Récupérer les images
-    conn = obtenir_connexion()
-    cur = conn.cursor()
-    cur.execute("SELECT image_url FROM images_produits WHERE produit_id = %s ORDER BY ordre ASC", (id,))
-    images = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    produit["images"] = [img["image_url"] for img in images]
-
-    image_og = produit["images"][0] if produit["images"] else "https://via.placeholder.com/800x400"
-    titre_og = produit["nom_produit"]
-    description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
-    url_og = f"{FRONTEND_URL}/produit/{id}"
-
-    return render_template(
-        "produit.html",
-        produit=produit,
-        image_og=image_og,
-        titre_og=titre_og,
-        description_og=description_og,
-        url_og=url_og,
-        FRONTEND_URL=FRONTEND_URL
-    )
 
 # ==========================================
 # LANCEMENT

@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function() {
         preview.innerHTML = "";
         imagesSelectionnees = [];
         if (this.files.length > 3) {
-            afficherNotification("⚠️ Maximum 5 photos", "error");
+            afficherNotification("⚠️ Maximum 3 photos", "error");
             this.value = "";
             return;
         }

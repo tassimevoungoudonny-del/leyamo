@@ -1,104 +1,16 @@
 const API = "";
-const params = new URLSearchParams(window.location.search);
-const id = params.get("id");
-chargerProduit();
+const id = window.location.pathname.split('/').pop();
 
-async function chargerProduit() {
-    try {
-        const reponse = await fetch(`${API}/produits/${id}`);
-        const data = await reponse.json();
-        const p = data.data;
-        document.getElementById("nom").innerHTML = p.nom_produit;
-
-        const prixFormate = new Intl.NumberFormat('fr-FR').format(p.prix);
-        const promotion = p.promotion || 0;
-        let prixHtml = `${prixFormate} FCFA`;
-        if (promotion > 0) {
-            const prixPromo = new Intl.NumberFormat('fr-FR').format(p.prix * (1 - promotion / 100));
-            prixHtml = `
-                <span class="prix-barre">${prixFormate} FCFA</span>
-                <span class="prix">${prixPromo} FCFA</span>
-                <span class="badge-promo">-${promotion}%</span>
-            `;
-        }
-        document.getElementById("prix").innerHTML = prixHtml;
-
-        document.getElementById("categorie").innerHTML = p.categorie;
-        document.getElementById("description").innerHTML = p.description_produit;
-        document.getElementById("lieu").innerHTML = p.localisation_detaillee || p.localisation_boutique || "Non renseigné";
-        document.getElementById("vues").innerHTML = `👁 ${p.vues || 0} vues`;
-
-        const boutiqueNom = p.nom_boutique || "Boutique";
-        document.getElementById("nom-boutique").innerHTML = boutiqueNom;
-        const lienBoutique = document.getElementById("lien-boutique");
-        if (p.id_vendeur) {
-            lienBoutique.href = `/boutique?id=${p.id_vendeur}`;
-            lienBoutique.style.display = "inline";
-        } else {
-            lienBoutique.style.display = "none";
-        }
-
-        const images = p.images || [];
-        const principale = document.getElementById("image-principale");
-        const miniaturesDiv = document.getElementById("miniatures");
-        miniaturesDiv.innerHTML = "";
-        if (images.length > 0) {
-            principale.src = images[0];
-            images.forEach((url, idx) => {
-                const img = document.createElement("img");
-                img.src = url;
-                img.className = idx === 0 ? "active" : "";
-                img.addEventListener("click", function() {
-                    principale.src = url;
-                    document.querySelectorAll("#miniatures img").forEach(i => i.className = "");
-                    this.className = "active";
-                });
-                miniaturesDiv.appendChild(img);
-            });
-        } else {
-            principale.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='28' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
-        }
-
-        document.getElementById("btn-whatsapp").onclick = () => {
-            enregistrerClic();
-            window.open(`https://wa.me/237${p.num_whatsapp}?text=${encodeURIComponent(`Bonjour, intéressé par ${p.nom_produit}`)}`, "_blank");
-        };
-
-        chargerAvis(id);
-
-    } catch (erreur) {
-        afficherNotification("Erreur de chargement", "error");
-    }
-}
-
-async function enregistrerClic() {
-    try { await fetch(`${API}/produits/${id}/whatsapp`, { method: "POST" }); } catch (e) {}
-}
-
-function partagerWhatsApp() {
-    const url = encodeURIComponent(window.location.href);
-    const texte = encodeURIComponent(`🔥 Découvrez ce produit sur Leyamo !\n\n${document.getElementById("nom").textContent}\n💰 ${document.getElementById("prix").textContent}`);
-    window.open(`https://wa.me/?text=${texte}%0A🔗 ${url}`, "_blank");
-}
-
-function partagerFacebook() {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
-}
-
-function copierLien() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
-        afficherNotification("✅ Lien copié !", "success");
-    }).catch(() => {
-        afficherNotification("❌ Erreur", "error");
-    });
-}
+document.addEventListener("DOMContentLoaded", function() {
+    chargerAvis(id);
+});
 
 async function chargerAvis(produitId) {
     try {
         const reponse = await fetch(`${API}/produits/${produitId}/avis`);
         const data = await reponse.json();
         const section = document.getElementById("avis-section");
+        if (!section) return;
         const etoiles = "⭐".repeat(Math.round(data.moyenne || 0)) + "☆".repeat(5 - Math.round(data.moyenne || 0));
         section.innerHTML = `
             <h3>📝 Avis</h3>
@@ -133,7 +45,9 @@ async function chargerAvis(produitId) {
                 <button onclick="ajouterAvis(${produitId})">Envoyer</button>
             </div>
         `;
-    } catch (e) {}
+    } catch (e) {
+        console.error("Erreur avis", e);
+    }
 }
 
 async function ajouterAvis(produitId) {
@@ -157,3 +71,10 @@ async function ajouterAvis(produitId) {
         afficherNotification("Erreur", "error");
     }
 }
+
+document.addEventListener("click", function(e) {
+    if (e.target.id === "btn-whatsapp") {
+        const id = window.location.pathname.split('/').pop();
+        fetch(`${API}/produits/${id}/whatsapp`, { method: "POST" }).catch(() => {});
+    }
+});

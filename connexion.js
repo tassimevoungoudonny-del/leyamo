@@ -54,3 +54,21 @@ async function connexion() {
         console.error(erreur);
     }
 }
+
+function ouvrirResetPassword() {
+    const email = document.getElementById("email").value.trim();
+    if (!email) {
+        afficherNotification("Veuillez entrer votre email", "error");
+        return;
+    }
+    fetch(`${API}/vendeurs/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+    })
+    .then(res => res.json())
+    .then(data => {
+        afficherNotification(data.message, "success");
+    })
+    .catch(() => afficherNotification("Erreur", "error"));
+}

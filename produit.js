@@ -24,6 +24,7 @@ async function chargerAvis(produitId) {
 
         // S'assurer que moyenne est un nombre
         const moyenne = (typeof data.moyenne === 'number') ? data.moyenne : 0;
+        console.log("Moyenne :", moyenne);
         const total = data.total || 0;
         const etoiles = "⭐".repeat(Math.round(moyenne)) + "☆".repeat(5 - Math.round(moyenne));
 

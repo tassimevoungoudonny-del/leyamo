@@ -2548,3 +2548,14 @@ nav a:hover {
         padding: 2px 4px;
     }
 }
+/* Boutons plus grands pour le mobile */
+@media (max-width: 480px) {
+    .carte .info-produit .btn {
+        padding: 6px 4px !important;
+        font-size: 10px !important;
+        min-height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}

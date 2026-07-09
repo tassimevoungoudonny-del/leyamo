@@ -333,47 +333,6 @@ async function signalerProduit(id, nom) {
     }
 }
 
-async function chargerTopVues() {
-    try {
-        const reponse = await fetch(`${API}/produits/top-vues`);
-        const data = await reponse.json();
-        const container = document.getElementById("top-vues-container");
-        if (!container) return;
-        if (!data.data || data.data.length === 0) {
-            container.innerHTML = `<p style="text-align:center;color:#64748b;">Aucun produit tendance</p>`;
-            return;
-        }
-        container.innerHTML = "";
-        data.data.slice(0, 3).forEach(p => {
-            const image = p.image_url || DEFAULT_IMAGE;
-            const prix = formaterPrix(p.prix);
-            const promotion = p.promotion || 0;
-            let prixHtml = `<span class="prix">${prix} FCFA</span>`;
-            if (promotion > 0) {
-                const prixPromo = formaterPrix(p.prix * (1 - promotion / 100));
-                prixHtml = `
-                    <span class="prix-barre">${prix} FCFA</span>
-                    <span class="prix">${prixPromo} FCFA</span>
-                    <span class="badge-promo">-${promotion}%</span>
-                `;
-            }
-            container.innerHTML += `
-                <div class="top-vues-item carte" onclick="window.location.href='/produit/${p.id}'">
-                    <img src="${image}" class="image-produit" alt="${p.nom_produit}">
-                    <div class="info-produit">
-                        <h3>${p.nom_produit}</h3>
-                        <div>${prixHtml}</div>
-                        <span class="categorie">${p.categorie}</span>
-                        <span class="vues-count">👁 ${p.vues} vues</span>
-                        <a href="/produit/${p.id}" class="btn voir" onclick="event.stopPropagation();">Voir</a>
-                    </div>
-                </div>
-            `;
-        });
-    } catch (e) {
-        console.error("Erreur top vues", e);
-    }
-}
 
 document.addEventListener("DOMContentLoaded", function() {
     console.log("🚀 DOM chargé, initialisation...");

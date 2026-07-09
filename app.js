@@ -420,7 +420,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
     chargerProduits(1);
-    chargerTopVues();
     console.log("✅ Initialisation terminée.");
 });
 

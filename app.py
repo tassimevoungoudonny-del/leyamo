@@ -277,6 +277,9 @@ def reset_password_page():
 # ==========================================
 # ROUTE PRODUIT (avec render_template)
 # ==========================================
+# ==========================================
+# ROUTE PRODUIT (avec render_template)
+# ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
     conn = obtenir_connexion()
@@ -305,7 +308,17 @@ def afficher_produit_html(id):
 
     produit["images"] = [img["image_url"] for img in images]
 
-    image_og = produit["images"][0] if produit["images"] else "https://via.placeholder.com/800x400"
+    # --- Transformation Cloudinary pour une image plus grande (1200x630) ---
+    if produit["images"]:
+        image_og = produit["images"][0]
+        # Si c'est une URL Cloudinary, on la redimensionne en 1200x630
+        if 'cloudinary' in image_og and '/upload/' in image_og:
+            parts = image_og.split('/upload/')
+            image_og = parts[0] + '/upload/w_1200,h_630,c_fill/' + parts[1]
+    else:
+        # Image par défaut (logo)
+        image_og = f"{FRONTEND_URL}/logo.webp"
+
     titre_og = produit["nom_produit"]
     description_og = produit["description_produit"][:150] if produit["description_produit"] else "Découvrez ce produit sur Leyamo"
     url_og = f"{FRONTEND_URL}/produit/{id}"
@@ -319,7 +332,6 @@ def afficher_produit_html(id):
         url_og=url_og,
         FRONTEND_URL=FRONTEND_URL
     )
-
 # ==========================================
 # SERVEUR STATIQUE
 # ==========================================

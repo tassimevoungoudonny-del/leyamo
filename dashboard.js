@@ -204,7 +204,7 @@ function deconnexion() {
 }
 
 // ============================================
-// PUBLICATION AVEC PRÉCHARGEMENT (vendeur)
+// PUBLICATION AVEC IMAGE BRUTE + MESSAGE PRÉ-REMPLI (vendeur)
 // ============================================
 
 function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
@@ -215,7 +215,7 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
         return;
     }
 
-    // Créer la modale immédiatement avec un spinner
+    // Créer la modale avec spinner
     const overlay = document.createElement('div');
     overlay.id = 'modal-publication-vendeur';
     overlay.style.cssText = `
@@ -252,37 +252,40 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
         </div>
         <div style="text-align:center;padding:20px;">
             <div class="spinner" style="border:4px solid #e2e8f0;border-top-color:#0f766e;border-radius:50%;width:40px;height:40px;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
-            <p style="color:#64748b;margin-top:12px;">Chargement des données...</p>
+            <p style="color:#64748b;margin-top:12px;">Chargement...</p>
         </div>
     `;
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // Précharger les données en arrière-plan
+    // Précharger
     (async () => {
         try {
-            // Récupérer le produit
             const reponse = await fetch(`${API}/produits/${id}`);
             const data = await reponse.json();
             produitData = data.data;
 
-            // Récupérer l'image générée
-            const imgReponse = await fetch(`${window.location.origin}/generer-image-produit/${id}`);
-            const blob = await imgReponse.blob();
-            imageFile = new File([blob], 'produit.png', { type: 'image/png' });
+            const imageUrl = produitData.image_url;
+            if (imageUrl) {
+                const imgReponse = await fetch(imageUrl);
+                const blob = await imgReponse.blob();
+                const ext = imageUrl.split('.').pop().split('?')[0] || 'jpg';
+                imageFile = new File([blob], `produit_${id}.${ext}`, { type: blob.type || 'image/jpeg' });
+            } else {
+                imageFile = null;
+            }
 
-            // Mettre à jour la modale
             const prixFormate = new Intl.NumberFormat('fr-FR').format(produitData.prix);
             const lien = `${window.location.origin}/produit/${id}`;
-            const imageUrl = image || '';
+            const imageUrlDisplay = produitData.image_url || '';
 
             modal.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <h3 style="color:#064e3b;margin:0;">📢 Publier votre produit</h3>
                     <button onclick="fermerModalPublicationVendeur()" style="background:transparent;border:none;font-size:24px;cursor:pointer;">✕</button>
                 </div>
-                ${imageUrl ? `<img src="${imageUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">` : ''}
+                ${imageUrlDisplay ? `<img src="${imageUrlDisplay}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">` : '<p style="color:#dc2626;">⚠️ Aucune image</p>'}
                 <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:16px;">
                     <p style="margin:0;font-weight:600;">${produitData.nom_produit}</p>
                     <p style="margin:4px 0;color:#0f766e;font-weight:600;">${prixFormate} FCFA</p>
@@ -307,7 +310,7 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
                 <div id="resultat-publication-vendeur" style="margin-top:12px;text-align:center;"></div>
             `;
         } catch (e) {
-            modal.innerHTML = `<p style="color:#dc2626;">❌ Erreur de chargement : ${e.message}</p>`;
+            modal.innerHTML = `<p style="color:#dc2626;">❌ Erreur : ${e.message}</p>`;
             afficherNotification("Erreur de préchargement", "error");
         }
     })();
@@ -316,7 +319,6 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
 function fermerModalPublicationVendeur() {
     const modal = document.getElementById('modal-publication-vendeur');
     if (modal) modal.remove();
-    // Réinitialiser les données préchargées
     produitData = null;
     imageFile = null;
 }
@@ -332,8 +334,8 @@ async function publierDepuisModalVendeur(produitId) {
     const messagePerso = document.getElementById('message-publier-vendeur').value.trim();
     const resultatDiv = document.getElementById('resultat-publication-vendeur');
 
-    if (!produitData || !imageFile) {
-        resultatDiv.innerHTML = '<span style="color:#dc2626;">⏳ Veuillez attendre le chargement complet.</span>';
+    if (!produitData) {
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">⏳ Attendez le chargement</span>';
         return;
     }
 
@@ -342,6 +344,26 @@ async function publierDepuisModalVendeur(produitId) {
     const lien = `${window.location.origin}/produit/${produitId}`;
     const accroche = messagePerso || `🔥 Découvrez ${nom} sur Leyamo !`;
     const message = `${accroche}\n💰 ${prix} FCFA\n🏷️ ${produitData.categorie}\n🔗 ${lien}`;
+
+    if (!imageFile) {
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: nom, text: message });
+                afficherNotification("✅ Partagé (sans image)", "success");
+                resultatDiv.innerHTML = `<span style="color:#16a34a;">✅ Partagé sur ${plateforme}</span>`;
+                setTimeout(() => fermerModalPublicationVendeur(), 1500);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    afficherNotification("❌ Échec du partage", "error");
+                    resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${err.message}</span>`;
+                }
+            }
+        } else {
+            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+            resultatDiv.innerHTML = `<span style="color:#f59e0b;">📤 WhatsApp ouvert</span>`;
+        }
+        return;
+    }
 
     if (navigator.share) {
         try {
@@ -362,12 +384,11 @@ async function publierDepuisModalVendeur(produitId) {
     } else {
         const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(urlWhatsApp, '_blank');
-        window.open(`${window.location.origin}/generer-image-produit/${produitId}`, '_blank');
+        window.open(produitData.image_url, '_blank');
         resultatDiv.innerHTML = `
-            <span style="color:#f59e0b;">⚠️ Votre navigateur ne permet pas le partage direct d'image.<br>
-            L'image s'ouvre dans un nouvel onglet. Téléchargez-la et envoyez-la dans WhatsApp avec le message.</span>
+            <span style="color:#f59e0b;">⚠️ Desktop : l'image s'ouvre dans un onglet. Téléchargez-la et envoyez-la avec le message.</span>
         `;
-        afficherNotification("📤 Message WhatsApp ouvert, téléchargez l'image", "info");
+        afficherNotification("📤 WhatsApp ouvert, image dans un onglet", "info");
     }
 }
 

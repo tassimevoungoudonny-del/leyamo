@@ -1,4 +1,6 @@
 const API = "";
+let produitData = null;
+let imageFile = null;
 
 chargerDashboard();
 
@@ -202,7 +204,7 @@ function deconnexion() {
 }
 
 // ============================================
-// NOUVELLE PUBLICATION AVEC IMAGE (Vendeur)
+// PUBLICATION AVEC PRÉCHARGEMENT (vendeur)
 // ============================================
 
 function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
@@ -212,113 +214,160 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
         window.location.href = "/connexion";
         return;
     }
+
+    // Créer la modale immédiatement avec un spinner
     const overlay = document.createElement('div');
     overlay.id = 'modal-publication-vendeur';
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:100000;display:flex;justify-content:center;align-items:center;animation:fadeIn 0.3s ease;`;
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 100000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    `;
+
     const modal = document.createElement('div');
-    modal.style.cssText = `background:white;border-radius:16px;padding:30px 32px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:slideUp 0.3s ease;`;
-    const prixFormate = new Intl.NumberFormat('fr-FR').format(prix);
-    const lien = `${window.location.origin}/produit/${id}`;
-    const imageUrl = image || '';
+    modal.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 30px 32px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+    `;
+
     modal.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 style="color:#064e3b;margin:0;">📢 Publier votre produit</h3>
+            <h3 style="color:#064e3b;margin:0;">📢 Préparation...</h3>
             <button onclick="fermerModalPublicationVendeur()" style="background:transparent;border:none;font-size:24px;cursor:pointer;">✕</button>
         </div>
-        ${imageUrl ? `<img src="${imageUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">` : ''}
-        <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:16px;">
-            <p style="margin:0;font-weight:600;">${nom}</p>
-            <p style="margin:4px 0;color:#0f766e;font-weight:600;">${prixFormate} FCFA</p>
-            <p style="margin:0;font-size:13px;color:#64748b;">🏷️ ${categorie}</p>
-            <p style="margin:0;font-size:13px;color:#64748b;">🔗 ${lien}</p>
+        <div style="text-align:center;padding:20px;">
+            <div class="spinner" style="border:4px solid #e2e8f0;border-top-color:#0f766e;border-radius:50%;width:40px;height:40px;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
+            <p style="color:#64748b;margin-top:12px;">Chargement des données...</p>
         </div>
-        <label style="font-weight:600;display:block;margin-bottom:4px;">Plateforme</label>
-        <select id="plateforme-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">
-            <option value="whatsapp">📱 WhatsApp</option>
-            <option value="facebook">📘 Facebook</option>
-            <option value="twitter">🐦 Twitter/X</option>
-        </select>
-        <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé (accroche)</label>
-        <textarea id="message-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${categorie}\n🔗 ${lien}</textarea>
-        <div style="display:flex;gap:10px;">
-            <button onclick="publierDepuisModalVendeur(${id})" style="flex:1;background:#25D366;color:white;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">📤 Publier</button>
-            <button onclick="fermerModalPublicationVendeur()" style="flex:1;background:#e2e8f0;color:#1e293b;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">Annuler</button>
-        </div>
-        <div id="resultat-publication-vendeur" style="margin-top:12px;text-align:center;"></div>
     `;
+
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+
+    // Précharger les données en arrière-plan
+    (async () => {
+        try {
+            // Récupérer le produit
+            const reponse = await fetch(`${API}/produits/${id}`);
+            const data = await reponse.json();
+            produitData = data.data;
+
+            // Récupérer l'image générée
+            const imgReponse = await fetch(`${window.location.origin}/generer-image-produit/${id}`);
+            const blob = await imgReponse.blob();
+            imageFile = new File([blob], 'produit.png', { type: 'image/png' });
+
+            // Mettre à jour la modale
+            const prixFormate = new Intl.NumberFormat('fr-FR').format(produitData.prix);
+            const lien = `${window.location.origin}/produit/${id}`;
+            const imageUrl = image || '';
+
+            modal.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h3 style="color:#064e3b;margin:0;">📢 Publier votre produit</h3>
+                    <button onclick="fermerModalPublicationVendeur()" style="background:transparent;border:none;font-size:24px;cursor:pointer;">✕</button>
+                </div>
+                ${imageUrl ? `<img src="${imageUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">` : ''}
+                <div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:16px;">
+                    <p style="margin:0;font-weight:600;">${produitData.nom_produit}</p>
+                    <p style="margin:4px 0;color:#0f766e;font-weight:600;">${prixFormate} FCFA</p>
+                    <p style="margin:0;font-size:13px;color:#64748b;">🏷️ ${produitData.categorie}</p>
+                    <p style="margin:0;font-size:13px;color:#64748b;">🔗 ${lien}</p>
+                </div>
+
+                <label style="font-weight:600;display:block;margin-bottom:4px;">Plateforme</label>
+                <select id="plateforme-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;margin-bottom:12px;">
+                    <option value="whatsapp">📱 WhatsApp</option>
+                    <option value="facebook">📘 Facebook</option>
+                    <option value="twitter">🐦 Twitter/X</option>
+                </select>
+
+                <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé (accroche)</label>
+                <textarea id="message-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${produitData.nom_produit} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${produitData.categorie}\n🔗 ${lien}</textarea>
+
+                <div style="display:flex;gap:10px;">
+                    <button onclick="publierDepuisModalVendeur(${id})" style="flex:1;background:#25D366;color:white;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">📤 Publier</button>
+                    <button onclick="fermerModalPublicationVendeur()" style="flex:1;background:#e2e8f0;color:#1e293b;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">Annuler</button>
+                </div>
+                <div id="resultat-publication-vendeur" style="margin-top:12px;text-align:center;"></div>
+            `;
+        } catch (e) {
+            modal.innerHTML = `<p style="color:#dc2626;">❌ Erreur de chargement : ${e.message}</p>`;
+            afficherNotification("Erreur de préchargement", "error");
+        }
+    })();
 }
 
 function fermerModalPublicationVendeur() {
     const modal = document.getElementById('modal-publication-vendeur');
     if (modal) modal.remove();
+    // Réinitialiser les données préchargées
+    produitData = null;
+    imageFile = null;
 }
 
 async function publierDepuisModalVendeur(produitId) {
     const token = localStorage.getItem("token");
-    const csrf_token = localStorage.getItem("csrf_token");
-    const plateforme = document.getElementById('plateforme-publier-vendeur').value;
-    const messagePerso = document.getElementById('message-publier-vendeur').value.trim();
-    const resultatDiv = document.getElementById('resultat-publication-vendeur');
-
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
         return;
     }
 
-    try {
-        // 1. Récupérer les infos du produit
-        const reponse = await fetch(`${API}/produits/${produitId}`);
-        const data = await reponse.json();
-        const produit = data.data;
+    const plateforme = document.getElementById('plateforme-publier-vendeur').value;
+    const messagePerso = document.getElementById('message-publier-vendeur').value.trim();
+    const resultatDiv = document.getElementById('resultat-publication-vendeur');
 
-        // 2. Construire le message
-        const nom = produit.nom_produit;
-        const prix = new Intl.NumberFormat('fr-FR').format(produit.prix);
-        const lien = `${window.location.origin}/produit/${produitId}`;
-        const accroche = messagePerso || `🔥 Découvrez ${nom} sur Leyamo !`;
-        const message = `${accroche}\n💰 ${prix} FCFA\n🏷️ ${produit.categorie}\n🔗 ${lien}`;
+    if (!produitData || !imageFile) {
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">⏳ Veuillez attendre le chargement complet.</span>';
+        return;
+    }
 
-        // 3. Générer l'URL de l'image
-        const imageUrl = `${window.location.origin}/generer-image-produit/${produitId}`;
+    const nom = produitData.nom_produit;
+    const prix = new Intl.NumberFormat('fr-FR').format(produitData.prix);
+    const lien = `${window.location.origin}/produit/${produitId}`;
+    const accroche = messagePerso || `🔥 Découvrez ${nom} sur Leyamo !`;
+    const message = `${accroche}\n💰 ${prix} FCFA\n🏷️ ${produitData.categorie}\n🔗 ${lien}`;
 
-        // 4. Télécharger l'image en blob
-        const imgReponse = await fetch(imageUrl);
-        const blob = await imgReponse.blob();
-        const file = new File([blob], 'produit.png', { type: 'image/png' });
-
-        // 5. Partager via l'API Web Share (mobile)
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: nom,
-                    text: message,
-                    files: [file]
-                });
-                afficherNotification("✅ Partagé avec succès !", "success");
-                resultatDiv.innerHTML = `<span style="color:#16a34a;">✅ Partagé sur ${plateforme}</span>`;
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    afficherNotification("❌ Échec du partage", "error");
-                    resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${err.message}</span>`;
-                }
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: nom,
+                text: message,
+                files: [imageFile]
+            });
+            afficherNotification("✅ Partagé avec succès !", "success");
+            resultatDiv.innerHTML = `<span style="color:#16a34a;">✅ Partagé sur ${plateforme}</span>`;
+            setTimeout(() => fermerModalPublicationVendeur(), 1500);
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                afficherNotification("❌ Échec du partage", "error");
+                resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${err.message}</span>`;
             }
-        } else {
-            // Fallback pour ordinateur : ouvrir WhatsApp avec le texte + l'image dans un nouvel onglet
-            const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(message)}`;
-            window.open(urlWhatsApp, '_blank');
-            window.open(imageUrl, '_blank');
-            resultatDiv.innerHTML = `
-                <span style="color:#f59e0b;">⚠️ Votre navigateur ne permet pas le partage direct d'image.<br>
-                L'image s'ouvre dans un nouvel onglet. Téléchargez-la et envoyez-la dans WhatsApp avec le message.</span>
-            `;
-            afficherNotification("📤 Message WhatsApp ouvert, téléchargez l'image", "info");
         }
-    } catch (e) {
-        console.error(e);
-        afficherNotification("Erreur lors de la préparation du partage", "error");
-        resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ Erreur : ${e.message}</span>`;
+    } else {
+        const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(urlWhatsApp, '_blank');
+        window.open(`${window.location.origin}/generer-image-produit/${produitId}`, '_blank');
+        resultatDiv.innerHTML = `
+            <span style="color:#f59e0b;">⚠️ Votre navigateur ne permet pas le partage direct d'image.<br>
+            L'image s'ouvre dans un nouvel onglet. Téléchargez-la et envoyez-la dans WhatsApp avec le message.</span>
+        `;
+        afficherNotification("📤 Message WhatsApp ouvert, téléchargez l'image", "info");
     }
 }
 

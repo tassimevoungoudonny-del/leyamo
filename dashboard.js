@@ -215,7 +215,6 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
         return;
     }
 
-    // Créer la modale avec spinner
     const overlay = document.createElement('div');
     overlay.id = 'modal-publication-vendeur';
     overlay.style.cssText = `
@@ -252,14 +251,13 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
         </div>
         <div style="text-align:center;padding:20px;">
             <div class="spinner" style="border:4px solid #e2e8f0;border-top-color:#0f766e;border-radius:50%;width:40px;height:40px;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
-            <p style="color:#64748b;margin-top:12px;">Chargement...</p>
+            <p style="color:#64748b;margin-top:12px;">Chargement des données...</p>
         </div>
     `;
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // Précharger
     (async () => {
         try {
             const reponse = await fetch(`${API}/produits/${id}`);
@@ -300,8 +298,10 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
                     <option value="twitter">🐦 Twitter/X</option>
                 </select>
 
-                <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé (accroche)</label>
-                <textarea id="message-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${produitData.nom_produit} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${produitData.categorie}\n🔗 ${lien}</textarea>
+                <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé (sans le lien)</label>
+                <textarea id="message-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${produitData.nom_produit} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${produitData.categorie}</textarea>
+
+                <p style="font-size:13px;color:#64748b;margin:-8px 0 12px;">🔗 Le lien sera ajouté automatiquement à la fin.</p>
 
                 <div style="display:flex;gap:10px;">
                     <button onclick="publierDepuisModalVendeur(${id})" style="flex:1;background:#25D366;color:white;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">📤 Publier</button>
@@ -310,7 +310,7 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
                 <div id="resultat-publication-vendeur" style="margin-top:12px;text-align:center;"></div>
             `;
         } catch (e) {
-            modal.innerHTML = `<p style="color:#dc2626;">❌ Erreur : ${e.message}</p>`;
+            modal.innerHTML = `<p style="color:#dc2626;">❌ Erreur de chargement : ${e.message}</p>`;
             afficherNotification("Erreur de préchargement", "error");
         }
     })();
@@ -335,15 +335,18 @@ async function publierDepuisModalVendeur(produitId) {
     const resultatDiv = document.getElementById('resultat-publication-vendeur');
 
     if (!produitData) {
-        resultatDiv.innerHTML = '<span style="color:#dc2626;">⏳ Attendez le chargement</span>';
+        resultatDiv.innerHTML = '<span style="color:#dc2626;">⏳ Veuillez attendre le chargement complet.</span>';
         return;
     }
 
     const nom = produitData.nom_produit;
     const prix = new Intl.NumberFormat('fr-FR').format(produitData.prix);
     const lien = `${window.location.origin}/produit/${produitId}`;
-    const accroche = messagePerso || `🔥 Découvrez ${nom} sur Leyamo !`;
-    const message = `${accroche}\n💰 ${prix} FCFA\n🏷️ ${produitData.categorie}\n🔗 ${lien}`;
+    let message = messagePerso;
+    if (!message) {
+        message = `🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prix} FCFA\n🏷️ ${produitData.categorie}`;
+    }
+    message += `\n🔗 ${lien}`;
 
     if (!imageFile) {
         if (navigator.share) {
@@ -360,7 +363,8 @@ async function publierDepuisModalVendeur(produitId) {
             }
         } else {
             window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-            resultatDiv.innerHTML = `<span style="color:#f59e0b;">📤 WhatsApp ouvert</span>`;
+            resultatDiv.innerHTML = `<span style="color:#f59e0b;">📤 Message WhatsApp ouvert</span>`;
+            afficherNotification("📤 WhatsApp ouvert", "info");
         }
         return;
     }
@@ -386,13 +390,14 @@ async function publierDepuisModalVendeur(produitId) {
         window.open(urlWhatsApp, '_blank');
         window.open(produitData.image_url, '_blank');
         resultatDiv.innerHTML = `
-            <span style="color:#f59e0b;">⚠️ Desktop : l'image s'ouvre dans un onglet. Téléchargez-la et envoyez-la avec le message.</span>
+            <span style="color:#f59e0b;">⚠️ Votre navigateur ne permet pas le partage direct d'image.<br>
+            L'image s'ouvre dans un nouvel onglet. Téléchargez-la et envoyez-la dans WhatsApp avec le message.</span>
         `;
-        afficherNotification("📤 WhatsApp ouvert, image dans un onglet", "info");
+        afficherNotification("📤 Message WhatsApp ouvert, téléchargez l'image", "info");
     }
 }
 
-// Exposer les fonctions globalement
+// Expositions globales
 window.modifierProduit = modifierProduit;
 window.supprimerProduit = supprimerProduit;
 window.supprimerCompte = supprimerCompte;

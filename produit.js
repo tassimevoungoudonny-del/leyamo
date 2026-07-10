@@ -115,6 +115,30 @@ document.addEventListener("click", function(e) {
     }
 });
 
+// Gestion de l'historique pour la page produit
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier si l'utilisateur vient de l'extérieur (pas de referer interne)
+    const referer = document.referfer || '';
+    const isExternal = !referer || !referer.includes(window.location.origin);
+
+    if (isExternal) {
+        // L'utilisateur arrive directement (ex: WhatsApp)
+        // On remplace l'état actuel par l'accueil
+        history.replaceState({ page: 'home' }, '', '/');
+        // On pousse l'état actuel du produit
+        history.pushState({ page: 'product' }, '', window.location.pathname);
+    }
+
+    // Intercepter le retour arrière
+    window.addEventListener('popstate', function(event) {
+        // Si l'état précédent est 'home' (accueil), on redirige
+        if (event.state && event.state.page === 'home') {
+            window.location.href = '/';
+        }
+        // Si l'utilisateur vient de l'intérieur, on le laisse naviguer normalement
+    });
+});
+
 // Exposer les fonctions globalement si nécessaire
 window.ajouterAvis = ajouterAvis;
 window.chargerAvis = chargerAvis;

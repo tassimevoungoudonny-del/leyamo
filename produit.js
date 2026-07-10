@@ -1,12 +1,12 @@
 // ============================================
-// PRODUIT.JS – Version définitive (retour fiable)
+// PRODUIT.JS – Version ultime (retour fiable)
 // ============================================
 
 const API = "";
 const id = window.location.pathname.split('/').pop();
 
 // ============================================
-// 1. Gestion immédiate du retour arrière
+// 1. Gestion robuste du retour arrière (touche physique)
 // ============================================
 (function() {
     // Vérifier si l'utilisateur vient de l'extérieur (pas de referer interne)
@@ -15,40 +15,36 @@ const id = window.location.pathname.split('/').pop();
 
     if (isExternal) {
         // Créer un historique à deux entrées : accueil → produit
-        // Remplacer l'état actuel par l'accueil
         history.replaceState({ page: 'home' }, '', '/');
-        // Pousser l'état du produit
         history.pushState({ page: 'product' }, '', window.location.pathname);
     }
 
-    // Intercepter l'événement popstate (touche Retour ou geste)
+    // Intercepter popstate (touche Retour classique)
     window.addEventListener('popstate', function(event) {
-        // Si l'état précédent est 'home' ou null, on redirige vers l'accueil
         if (event.state && event.state.page === 'home') {
             window.location.replace('/');
         } else if (!event.state) {
-            // Cas où l'historique a été effacé
             window.location.replace('/');
         }
-        // Sinon, on laisse le navigateur faire son comportement normal
     });
 
-    // Fallback : si jamais popstate n'est pas déclenché (certains navigateurs),
-    // on redirige via pagehide lorsque l'utilisateur quitte la page
-    // mais seulement si la destination est externe (éviter les boucles)
-    let isLeaving = false;
-    window.addEventListener('pagehide', function(e) {
-        // On ne redirige que si l'historique est en état 'product'
-        // et que la page suivante n'est pas une page interne (ex: lien vers un autre produit)
-        // On utilise performance.navigation pour détecter un retour
-        // Mais c'est imparfait, on préfère laisser le popstate faire son travail.
-        // On ajoute juste un délai pour éviter les conflits.
-        if (!isLeaving) {
-            isLeaving = true;
-            // On ne redirige pas systématiquement car cela pourrait causer des boucles
-            // avec les liens internes. On laisse le popstate gérer.
+    // Détecter le retour via pageshow (bfcache)
+    window.addEventListener('pageshow', function(event) {
+        // Si la page est chargée depuis la bfcache, c'est un retour
+        if (event.persisted) {
+            window.location.replace('/');
         }
     });
+
+    // Fallback pour les navigateurs qui ne déclenchent ni popstate ni pageshow correctement
+    // On utilise un compteur pour détecter si l'utilisateur est resté sur la page
+    // (Solution alternative : utiliser un cookie ou sessionStorage)
+    // On va simplement s'assurer que l'historique est bien modifié et qu'une sortie
+    // propre est effectuée en cas de fermeture de l'application.
+    // Rien de plus fiable.
+
+    // Petit hack : sur certains appareils, la touche retour peut aussi déclencher un événement "beforeunload"
+    // On pourrait rediriger vers l'accueil lors de la fermeture, mais ce n'est pas souhaitable.
 })();
 
 // ============================================

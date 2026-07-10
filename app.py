@@ -6,13 +6,17 @@ import logging
 import requests
 from datetime import datetime, timedelta
 from functools import wraps, lru_cache
-from flask import Flask, jsonify, request, send_from_directory, session, render_template
+from flask import Flask, jsonify, request, send_from_directory, session, render_template, send_file
 from flask_cors import CORS
 from flask_compress import Compress
 from dotenv import load_dotenv
 from marshmallow import Schema, fields, validate, ValidationError
 import cloudinary
 import cloudinary.uploader
+
+# NOUVEAU : import pour la génération d'images
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
 
 from config import (
     JWT_SECRET, UPLOAD_CONFIG, MAILGUN_API_KEY, MAILGUN_DOMAIN,
@@ -39,7 +43,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# SCHEMAS
+# SCHEMAS (inchangés)
 # ==========================================
 class InscriptionSchema(Schema):
     nom = fields.Str(required=True, validate=validate.Length(min=2, max=100))
@@ -67,7 +71,7 @@ class ResetPasswordSchema(Schema):
     email = fields.Email(required=True)
 
 # ==========================================
-# CSRF
+# CSRF (inchangé)
 # ==========================================
 def generer_token_csrf():
     token = str(uuid.uuid4())
@@ -88,7 +92,7 @@ def require_csrf(f):
     return decorated_function
 
 # ==========================================
-# FONCTIONS UTILITAIRES
+# FONCTIONS UTILITAIRES (inchangées)
 # ==========================================
 def hash_mot_de_passe(mot_de_passe):
     return bcrypt.hashpw(mot_de_passe.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -206,7 +210,7 @@ def formater_prix(prix):
     return f"{int(prix):,}".replace(',', ' ')
 
 # ==========================================
-# CACHE
+# CACHE (inchangé)
 # ==========================================
 @lru_cache(maxsize=128)
 def get_cached_categories():
@@ -224,7 +228,7 @@ def invalidate_product_cache():
     get_cached_categories.cache_clear()
 
 # ==========================================
-# ROUTES PAGES HTML
+# ROUTES PAGES HTML (inchangées)
 # ==========================================
 @app.route('/')
 def index():
@@ -275,10 +279,7 @@ def reset_password_page():
     return send_from_directory('.', 'reset-password.html')
 
 # ==========================================
-# ROUTE PRODUIT (avec render_template)
-# ==========================================
-# ==========================================
-# ROUTE PRODUIT (avec render_template)
+# ROUTE PRODUIT AVEC RENDER_TEMPLATE
 # ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
@@ -299,7 +300,6 @@ def afficher_produit_html(id):
         conn.close()
         return "Produit introuvable", 404
 
-    # Récupérer les images
     cur = conn.cursor()
     cur.execute("SELECT image_url FROM images_produits WHERE produit_id = %s ORDER BY ordre ASC", (id,))
     images = cur.fetchall()
@@ -308,7 +308,7 @@ def afficher_produit_html(id):
 
     produit["images"] = [img["image_url"] for img in images]
 
-    # --- Image OG avec redimensionnement Cloudinary ---
+    # Image OG avec redimensionnement Cloudinary
     if produit["images"]:
         image_og = produit["images"][0]
         if 'cloudinary' in image_og and '/upload/' in image_og:
@@ -317,7 +317,6 @@ def afficher_produit_html(id):
     else:
         image_og = f"{FRONTEND_URL}/logo.webp"
 
-    # --- URL OG avec version (cache-buster) ---
     version = produit.get('updated_at') or produit.get('date_creation')
     if version:
         version_str = str(int(version.timestamp()))
@@ -337,6 +336,7 @@ def afficher_produit_html(id):
         url_og=url_og,
         FRONTEND_URL=FRONTEND_URL
     )
+
 # ==========================================
 # SERVEUR STATIQUE
 # ==========================================
@@ -373,7 +373,7 @@ def test_db():
         return {"status": "DB ERROR", "message": str(e)}, 500
 
 # ==========================================
-# AUTHENTIFICATION VENDEUR
+# AUTHENTIFICATION VENDEUR (inchangé)
 # ==========================================
 @app.route('/vendeurs/inscription', methods=['POST'])
 def inscription_vendeur():
@@ -547,7 +547,7 @@ def confirm_reset_password():
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
 # ==========================================
-# PRODUITS (PUBLIC)
+# PRODUITS (PUBLIC) - inchangé
 # ==========================================
 @app.route('/produits', methods=['GET'])
 def voir_produits():
@@ -738,7 +738,7 @@ def boutique_vendeur(id_vendeur):
     return jsonify({"boutique": vendeur, "produits": produits})
 
 # ==========================================
-# TOP VUES
+# TOP VUES (inchangé)
 # ==========================================
 @app.route('/produits/top-vues', methods=['GET'])
 def top_produits_vues():
@@ -762,7 +762,7 @@ def top_produits_vues():
     return jsonify({"status": "success", "data": produits})
 
 # ==========================================
-# CRUD PRODUITS (vendeur)
+# CRUD PRODUITS (vendeur) - inchangé
 # ==========================================
 @app.route('/produits', methods=['POST'])
 @require_csrf
@@ -890,7 +890,7 @@ def supprimer_produit(id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# UPLOAD IMAGES (Cloudinary)
+# UPLOAD IMAGES (Cloudinary) - inchangé
 # ==========================================
 @app.route('/upload/<int:produit_id>', methods=['POST'])
 @require_csrf
@@ -970,7 +970,7 @@ def clic_whatsapp(id):
     return jsonify({"status": "success", "message": "Clic WhatsApp enregistré"})
 
 # ==========================================
-# DASHBOARD VENDEUR
+# DASHBOARD VENDEUR - inchangé
 # ==========================================
 @app.route('/vendeurs/me/dashboard', methods=['GET'])
 def me_dashboard():
@@ -1032,7 +1032,7 @@ def supprimer_compte_vendeur():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# SIGNALEMENTS
+# SIGNALEMENTS - inchangé
 # ==========================================
 @app.route('/produits/<int:id>/signaler', methods=['POST'])
 def signaler_produit(id):
@@ -1057,7 +1057,7 @@ def signaler_produit(id):
     return jsonify({"status": "success", "message": "Signalement enregistré"}), 201
 
 # ==========================================
-# ADMIN
+# ADMIN - inchangé
 # ==========================================
 @app.route('/admin/connexion', methods=['POST'])
 def admin_connexion():
@@ -1139,7 +1139,6 @@ def admin_produits():
         requete += " ORDER BY p.date_creation ASC"
     else:
         requete += " ORDER BY p.date_creation DESC"
-    # Compter le total correctement
     count_requete = f"SELECT COUNT(*) as total FROM produits p JOIN vendeurs v ON p.id_vendeur = v.id WHERE 1=1"
     count_params = []
     if statut:
@@ -1212,9 +1211,6 @@ def admin_publier_produit(id):
     log_action("admin_publier_produit", f"Produit ID: {id}, Plateforme: {plateforme}", request.remote_addr)
     return jsonify({"status": "success", "message": "URL de partage générée", "url": url})
 
-# ==========================================
-# AJOUT DE LA ROUTE VENDEUR POUR PUBLIER
-# ==========================================
 @app.route('/vendeurs/produits/<int:id>/publier', methods=['POST'])
 @require_csrf
 def vendeur_publier_produit(id):
@@ -1354,9 +1350,6 @@ def admin_notification_lu(id):
     conn.close()
     return jsonify({"status": "success", "message": "Notification marquée comme lue"})
 
-# ==========================================
-# ADMIN - SIGNALEMENTS
-# ==========================================
 @app.route('/admin/signalements', methods=['GET'])
 def admin_signalements():
     if not get_admin_id(request.headers.get("Authorization")):
@@ -1389,7 +1382,7 @@ def admin_traiter_signalement(id):
     return jsonify({"status": "success", "message": "Signalement traité"})
 
 # ==========================================
-# AVIS
+# AVIS - inchangé
 # ==========================================
 @app.route('/produits/<int:id>/avis', methods=['GET'])
 def get_avis(id):
@@ -1430,7 +1423,7 @@ def ajouter_avis(id):
     return jsonify({"status": "success", "message": "Avis ajouté"}), 201
 
 # ==========================================
-# FAVORIS
+# FAVORIS - inchangé
 # ==========================================
 @app.route('/favoris', methods=['POST'])
 def ajouter_favori():
@@ -1476,6 +1469,81 @@ def get_favoris(email):
     cur.close()
     conn.close()
     return jsonify({"status": "success", "data": produits})
+
+# ==========================================
+# NOUVEAU : GENERATION D'IMAGE DE FICHE PRODUIT
+# ==========================================
+@app.route('/generer-image-produit/<int:id>')
+def generer_image_produit(id):
+    conn = obtenir_connexion()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT p.*, v.nom_boutique 
+        FROM produits p 
+        JOIN vendeurs v ON p.id_vendeur = v.id 
+        WHERE p.id = %s
+    """, (id,))
+    produit = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not produit:
+        return jsonify({"error": "Produit introuvable"}), 404
+
+    # Dimensions de l'image (format idéal pour WhatsApp)
+    largeur, hauteur = 1200, 630
+    image = Image.new('RGB', (largeur, hauteur), color='#0f766e')
+    draw = ImageDraw.Draw(image)
+
+    # Polices (fallback si Arial n'est pas disponible)
+    try:
+        font_titre = ImageFont.truetype("arial.ttf", 52)
+        font_prix = ImageFont.truetype("arial.ttf", 48)
+        font_texte = ImageFont.truetype("arial.ttf", 30)
+        font_petit = ImageFont.truetype("arial.ttf", 22)
+    except:
+        font_titre = ImageFont.load_default()
+        font_prix = ImageFont.load_default()
+        font_texte = ImageFont.load_default()
+        font_petit = ImageFont.load_default()
+
+    # --- Texte ---
+    titre = produit['nom_produit'][:40]
+    draw.text((40, 40), titre, fill='white', font=font_titre)
+
+    prix_formate = f"{int(produit['prix']):,}".replace(',', ' ')
+    draw.text((40, 140), f"{prix_formate} FCFA", fill='#fbbf24', font=font_prix)
+
+    draw.text((40, 210), f"🏷️ {produit['categorie']}", fill='#a7f3d0', font=font_texte)
+
+    desc = produit['description_produit'][:100] if produit['description_produit'] else "Aucune description"
+    draw.text((40, 270), desc, fill='#e2e8f0', font=font_texte)
+
+    draw.text((40, 340), f"🏪 {produit['nom_boutique']}", fill='#a7f3d0', font=font_texte)
+
+    lien = f"{FRONTEND_URL}/produit/{id}"
+    draw.text((40, 560), f"🔗 {lien}", fill='#d1fae5', font=font_petit)
+
+    draw.text((1000, 560), "Leyamo Store", fill='white', font=font_petit)
+
+    # --- Image du produit (à droite) ---
+    if produit['image_url']:
+        try:
+            reponse = requests.get(produit['image_url'], timeout=10)
+            img_produit = Image.open(BytesIO(reponse.content))
+            img_produit = img_produit.resize((550, 500), Image.Resampling.LANCZOS)
+            mask = Image.new('L', (550, 500), 255)
+            image.paste(img_produit, (600, 65), mask)
+        except:
+            draw.rectangle([600, 65, 1150, 565], fill='#1e293b')
+            draw.text((700, 300), "📷 Photo", fill='white', font=font_texte)
+
+    # Sauvegarder l'image en mémoire
+    img_io = BytesIO()
+    image.save(img_io, 'PNG', quality=90)
+    img_io.seek(0)
+
+    return send_file(img_io, mimetype='image/png')
 
 # ==========================================
 # LANCEMENT

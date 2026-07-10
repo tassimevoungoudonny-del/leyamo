@@ -201,9 +201,12 @@ function deconnexion() {
     setTimeout(() => window.location.href = "/connexion", 300);
 }
 
+// ============================================
+// NOUVELLE PUBLICATION AVEC IMAGE (Vendeur)
+// ============================================
+
 function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
     const token = localStorage.getItem("token");
-    const csrf_token = localStorage.getItem("csrf_token");
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
         window.location.href = "/connexion";
@@ -235,7 +238,7 @@ function ouvrirModalPublicationVendeur(id, nom, prix, categorie, image) {
             <option value="facebook">📘 Facebook</option>
             <option value="twitter">🐦 Twitter/X</option>
         </select>
-        <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé</label>
+        <label style="font-weight:600;display:block;margin-bottom:4px;">Message personnalisé (accroche)</label>
         <textarea id="message-publier-vendeur" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;min-height:80px;margin-bottom:12px;font-family:inherit;">🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prixFormate} FCFA\n🏷️ ${categorie}\n🔗 ${lien}</textarea>
         <div style="display:flex;gap:10px;">
             <button onclick="publierDepuisModalVendeur(${id})" style="flex:1;background:#25D366;color:white;border:none;padding:12px;border-radius:50px;font-weight:600;cursor:pointer;">📤 Publier</button>
@@ -256,45 +259,74 @@ async function publierDepuisModalVendeur(produitId) {
     const token = localStorage.getItem("token");
     const csrf_token = localStorage.getItem("csrf_token");
     const plateforme = document.getElementById('plateforme-publier-vendeur').value;
-    const message = document.getElementById('message-publier-vendeur').value.trim();
+    const messagePerso = document.getElementById('message-publier-vendeur').value.trim();
     const resultatDiv = document.getElementById('resultat-publication-vendeur');
+
     if (!token) {
         afficherNotification("Veuillez vous connecter", "error");
         return;
     }
-    if (!message) {
-        resultatDiv.innerHTML = '<span style="color:#dc2626;">⚠️ Veuillez saisir un message</span>';
-        return;
-    }
+
     try {
-        const reponse = await fetch(`${API}/vendeurs/produits/${produitId}/publier`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": token,
-                "X-CSRF-Token": csrf_token
-            },
-            body: JSON.stringify({ plateforme, message })
-        });
+        // 1. Récupérer les infos du produit
+        const reponse = await fetch(`${API}/produits/${produitId}`);
         const data = await reponse.json();
-        if (data.url) {
-            resultatDiv.innerHTML = `
-                <a href="${data.url}" target="_blank" style="color:#0f766e;text-decoration:underline;font-weight:600;">
-                    🔗 Ouvrir sur ${plateforme.charAt(0).toUpperCase() + plateforme.slice(1)}
-                </a>
-                <br><small style="color:#64748b;">✅ Lien généré avec succès</small>
-            `;
-            afficherNotification("✅ URL générée pour " + plateforme, "success");
+        const produit = data.data;
+
+        // 2. Construire le message
+        const nom = produit.nom_produit;
+        const prix = new Intl.NumberFormat('fr-FR').format(produit.prix);
+        const lien = `${window.location.origin}/produit/${produitId}`;
+        const accroche = messagePerso || `🔥 Découvrez ${nom} sur Leyamo !`;
+        const message = `${accroche}\n💰 ${prix} FCFA\n🏷️ ${produit.categorie}\n🔗 ${lien}`;
+
+        // 3. Générer l'URL de l'image
+        const imageUrl = `${window.location.origin}/generer-image-produit/${produitId}`;
+
+        // 4. Télécharger l'image en blob
+        const imgReponse = await fetch(imageUrl);
+        const blob = await imgReponse.blob();
+        const file = new File([blob], 'produit.png', { type: 'image/png' });
+
+        // 5. Partager via l'API Web Share (mobile)
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: nom,
+                    text: message,
+                    files: [file]
+                });
+                afficherNotification("✅ Partagé avec succès !", "success");
+                resultatDiv.innerHTML = `<span style="color:#16a34a;">✅ Partagé sur ${plateforme}</span>`;
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    afficherNotification("❌ Échec du partage", "error");
+                    resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${err.message}</span>`;
+                }
+            }
         } else {
-            resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ ${data.message || 'Erreur'}</span>`;
+            // Fallback pour ordinateur : ouvrir WhatsApp avec le texte + l'image dans un nouvel onglet
+            const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(urlWhatsApp, '_blank');
+            window.open(imageUrl, '_blank');
+            resultatDiv.innerHTML = `
+                <span style="color:#f59e0b;">⚠️ Votre navigateur ne permet pas le partage direct d'image.<br>
+                L'image s'ouvre dans un nouvel onglet. Téléchargez-la et envoyez-la dans WhatsApp avec le message.</span>
+            `;
+            afficherNotification("📤 Message WhatsApp ouvert, téléchargez l'image", "info");
         }
     } catch (e) {
-        resultatDiv.innerHTML = '<span style="color:#dc2626;">❌ Erreur réseau</span>';
-        afficherNotification("Erreur lors de la publication", "error");
+        console.error(e);
+        afficherNotification("Erreur lors de la préparation du partage", "error");
+        resultatDiv.innerHTML = `<span style="color:#dc2626;">❌ Erreur : ${e.message}</span>`;
     }
 }
 
+// Exposer les fonctions globalement
 window.modifierProduit = modifierProduit;
 window.supprimerProduit = supprimerProduit;
 window.supprimerCompte = supprimerCompte;
 window.deconnexion = deconnexion;
+window.ouvrirModalPublicationVendeur = ouvrirModalPublicationVendeur;
+window.fermerModalPublicationVendeur = fermerModalPublicationVendeur;
+window.publierDepuisModalVendeur = publierDepuisModalVendeur;

@@ -1,50 +1,73 @@
 // ============================================
-// PRODUIT.JS – Version ultime (retour fiable)
+// PRODUIT.JS – Solution définitive retour arrière
 // ============================================
 
 const API = "";
 const id = window.location.pathname.split('/').pop();
 
 // ============================================
-// 1. Gestion robuste du retour arrière (touche physique)
+// 1. Gestion du retour arrière (fiable)
 // ============================================
 (function() {
-    // Vérifier si l'utilisateur vient de l'extérieur (pas de referer interne)
+    // Détecter si l'utilisateur vient de l'extérieur
     const referer = document.referrer || '';
     const isExternal = !referer || !referer.includes(window.location.origin);
 
     if (isExternal) {
-        // Créer un historique à deux entrées : accueil → produit
+        // Marquer dans sessionStorage qu'on est sur la page produit
+        sessionStorage.setItem('fromExternal', 'true');
+
+        // Créer un historique à deux entrées
         history.replaceState({ page: 'home' }, '', '/');
         history.pushState({ page: 'product' }, '', window.location.pathname);
     }
 
-    // Intercepter popstate (touche Retour classique)
+    // Intercepter popstate
     window.addEventListener('popstate', function(event) {
-        if (event.state && event.state.page === 'home') {
-            window.location.replace('/');
-        } else if (!event.state) {
+        if (sessionStorage.getItem('fromExternal') === 'true') {
+            sessionStorage.removeItem('fromExternal');
             window.location.replace('/');
         }
     });
 
-    // Détecter le retour via pageshow (bfcache)
+    // Détecter le retour via bfcache
     window.addEventListener('pageshow', function(event) {
-        // Si la page est chargée depuis la bfcache, c'est un retour
-        if (event.persisted) {
+        if (event.persisted && sessionStorage.getItem('fromExternal') === 'true') {
+            sessionStorage.removeItem('fromExternal');
             window.location.replace('/');
         }
     });
 
-    // Fallback pour les navigateurs qui ne déclenchent ni popstate ni pageshow correctement
-    // On utilise un compteur pour détecter si l'utilisateur est resté sur la page
-    // (Solution alternative : utiliser un cookie ou sessionStorage)
-    // On va simplement s'assurer que l'historique est bien modifié et qu'une sortie
-    // propre est effectuée en cas de fermeture de l'application.
-    // Rien de plus fiable.
+    // SECOURS : si l'utilisateur revient sur la page après un retour,
+    // le flag est encore présent, on le supprime pour éviter une boucle.
+    // Mais on redirige déjà via popstate/pageshow.
 
-    // Petit hack : sur certains appareils, la touche retour peut aussi déclencher un événement "beforeunload"
-    // On pourrait rediriger vers l'accueil lors de la fermeture, mais ce n'est pas souhaitable.
+    // Si malgré tout le retour échoue, on ajoute un bouton visible
+    // (optionnel, mais fortement recommandé)
+    const fiche = document.querySelector('.fiche-produit');
+    if (fiche) {
+        const retourBtn = document.createElement('a');
+        retourBtn.href = '/';
+        retourBtn.innerHTML = '← Retour à l\'accueil';
+        retourBtn.style.cssText = `
+            display: inline-block;
+            margin-bottom: 15px;
+            color: #0f766e;
+            text-decoration: underline;
+            font-weight: 600;
+            cursor: pointer;
+        `;
+        retourBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/';
+        });
+        fiche.prepend(retourBtn);
+    }
+
+    // Nettoyer le flag si la page est fermée normalement
+    window.addEventListener('beforeunload', function() {
+        sessionStorage.removeItem('fromExternal');
+    });
 })();
 
 // ============================================

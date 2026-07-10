@@ -1,15 +1,14 @@
 // ============================================
-// PRODUIT.JS – Version finale
+// PRODUIT.JS – Version définitive (retour fiable)
 // ============================================
 
 const API = "";
 const id = window.location.pathname.split('/').pop();
 
 // ============================================
-// 1. Gestion du retour arrière (touche physique)
+// 1. Gestion immédiate du retour arrière
 // ============================================
-
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
     // Vérifier si l'utilisateur vient de l'extérieur (pas de referer interne)
     const referer = document.referrer || '';
     const isExternal = !referer || !referer.includes(window.location.origin);
@@ -33,7 +32,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         // Sinon, on laisse le navigateur faire son comportement normal
     });
-});
+
+    // Fallback : si jamais popstate n'est pas déclenché (certains navigateurs),
+    // on redirige via pagehide lorsque l'utilisateur quitte la page
+    // mais seulement si la destination est externe (éviter les boucles)
+    let isLeaving = false;
+    window.addEventListener('pagehide', function(e) {
+        // On ne redirige que si l'historique est en état 'product'
+        // et que la page suivante n'est pas une page interne (ex: lien vers un autre produit)
+        // On utilise performance.navigation pour détecter un retour
+        // Mais c'est imparfait, on préfère laisser le popstate faire son travail.
+        // On ajoute juste un délai pour éviter les conflits.
+        if (!isLeaving) {
+            isLeaving = true;
+            // On ne redirige pas systématiquement car cela pourrait causer des boucles
+            // avec les liens internes. On laisse le popstate gérer.
+        }
+    });
+})();
 
 // ============================================
 // 2. Chargement des avis

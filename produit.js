@@ -1,5 +1,5 @@
 // ============================================
-// PRODUIT.JS – Gestion de la page produit
+// PRODUIT.JS – Version finale
 // ============================================
 
 const API = "";
@@ -14,19 +14,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const referer = document.referrer || '';
     const isExternal = !referer || !referer.includes(window.location.origin);
 
-    // Si on arrive directement (WhatsApp, lien externe)
     if (isExternal) {
+        // Créer un historique à deux entrées : accueil → produit
         // Remplacer l'état actuel par l'accueil
         history.replaceState({ page: 'home' }, '', '/');
         // Pousser l'état du produit
         history.pushState({ page: 'product' }, '', window.location.pathname);
     }
 
-    // Écouter la touche Retour (et le geste)
+    // Intercepter l'événement popstate (touche Retour ou geste)
     window.addEventListener('popstate', function(event) {
-        // Si l'état précédent est 'home', on redirige vers l'accueil
+        // Si l'état précédent est 'home' ou null, on redirige vers l'accueil
         if (event.state && event.state.page === 'home') {
-            window.location.href = '/';
+            window.location.replace('/');
+        } else if (!event.state) {
+            // Cas où l'historique a été effacé
+            window.location.replace('/');
         }
         // Sinon, on laisse le navigateur faire son comportement normal
     });

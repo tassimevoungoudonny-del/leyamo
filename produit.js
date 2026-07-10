@@ -3,6 +3,38 @@ const id = window.location.pathname.split('/').pop();
 
 document.addEventListener("DOMContentLoaded", function() {
     chargerAvis(id);
+
+    // ============================================
+    // GESTION DU RETOUR ARRIÈRE SUR PAGE PRODUIT
+    // ============================================
+    const referer = document.referrer || '';
+    const isExternal = !referer || !referer.includes(window.location.origin);
+
+    if (isExternal) {
+        // Remplacer l'état actuel par l'accueil
+        history.replaceState({ page: 'home' }, '', '/');
+        // Pousser l'état du produit
+        history.pushState({ page: 'product' }, '', window.location.pathname);
+    }
+
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.page === 'home') {
+            window.location.href = '/';
+        }
+    });
+
+    // Agrandir l'image principale en cliquant (lightbox)
+    const img = document.getElementById('image-principale');
+    if (img) {
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', function() {
+            if (typeof ouvrirLightbox === 'function') {
+                ouvrirLightbox(this.src);
+            } else {
+                window.open(this.src, '_blank');
+            }
+        });
+    }
 });
 
 async function chargerAvis(produitId) {
@@ -22,9 +54,7 @@ async function chargerAvis(produitId) {
             if (fiche) fiche.appendChild(section);
         }
 
-        // S'assurer que moyenne est un nombre
         const moyenne = (typeof data.moyenne === 'number') ? data.moyenne : 0;
-        console.log("Moyenne :", moyenne);
         const total = data.total || 0;
         const etoiles = "⭐".repeat(Math.round(moyenne)) + "☆".repeat(5 - Math.round(moyenne));
 
@@ -92,21 +122,6 @@ async function ajouterAvis(produitId) {
     }
 }
 
-// Agrandir l'image principale en cliquant (lightbox)
-document.addEventListener('DOMContentLoaded', function() {
-    const img = document.getElementById('image-principale');
-    if (img) {
-        img.style.cursor = 'pointer';
-        img.addEventListener('click', function() {
-            if (typeof ouvrirLightbox === 'function') {
-                ouvrirLightbox(this.src);
-            } else {
-                window.open(this.src, '_blank');
-            }
-        });
-    }
-});
-
 // Enregistrer le clic sur "Commander sur WhatsApp"
 document.addEventListener("click", function(e) {
     if (e.target.id === "btn-whatsapp") {
@@ -115,30 +130,6 @@ document.addEventListener("click", function(e) {
     }
 });
 
-// Gestion de l'historique pour la page produit
-document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier si l'utilisateur vient de l'extérieur (pas de referer interne)
-    const referer = document.referfer || '';
-    const isExternal = !referer || !referer.includes(window.location.origin);
-
-    if (isExternal) {
-        // L'utilisateur arrive directement (ex: WhatsApp)
-        // On remplace l'état actuel par l'accueil
-        history.replaceState({ page: 'home' }, '', '/');
-        // On pousse l'état actuel du produit
-        history.pushState({ page: 'product' }, '', window.location.pathname);
-    }
-
-    // Intercepter le retour arrière
-    window.addEventListener('popstate', function(event) {
-        // Si l'état précédent est 'home' (accueil), on redirige
-        if (event.state && event.state.page === 'home') {
-            window.location.href = '/';
-        }
-        // Si l'utilisateur vient de l'intérieur, on le laisse naviguer normalement
-    });
-});
-
-// Exposer les fonctions globalement si nécessaire
+// Exposer les fonctions globalement
 window.ajouterAvis = ajouterAvis;
 window.chargerAvis = chargerAvis;

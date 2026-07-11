@@ -1,3 +1,4 @@
+
 import os
 import uuid
 import bcrypt
@@ -150,6 +151,9 @@ def envoyer_notification(type_notif, destinataire, destinataire_id, message, lie
         except Exception as e:
             logger.error(f"Notification error: {e}")
 
+# ==========================================
+# ENVOI D'EMAILS (avec logs)
+# ==========================================
 def envoyer_email_confirmation(email, nom, token):
     if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
         logger.warning("Mailgun non configuré, email non envoyé")
@@ -411,6 +415,7 @@ def inscription_vendeur():
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
 
+    # Vérification du domaine (une seule fois)
     if not valider_domaine_email(data['email']):
         return jsonify({"status": "error", "message": "L'email fourni n'existe pas ou le domaine est invalide."}), 400
 
@@ -444,6 +449,7 @@ def inscription_vendeur():
             (data['email'], token)
         )
         conn.commit()
+        # Envoyer l'email de confirmation
         envoyer_email_confirmation(data['email'], data['nom'], token)
         log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
         envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin#vendeurs")
@@ -550,20 +556,13 @@ def reset_password():
     cur.close()
     conn.close()
 
-    try:
-        envoye = envoyer_email_reset(email, token)
-    except Exception as e:
-        logger.error(f"Exception dans envoyer_email_reset: {e}")
-        return jsonify({
-            "status": "error",
-            "message": f"Erreur interne lors de l'envoi de l'email : {str(e)}"
-        }), 500
-
+    # Envoyer l'email de réinitialisation
+    envoye = envoyer_email_reset(email, token)
     if not envoye:
         logger.error(f"Échec envoi email reset pour {email}")
         return jsonify({
             "status": "error",
-            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun (clé API, domaine, ou quota)."
+            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun."
         }), 500
 
     log_action("reset_password", f"Email: {email}", request.remote_addr)
@@ -601,7 +600,7 @@ def confirm_reset_password():
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
 # ==========================================
-# PRODUITS (PUBLIC)
+# PRODUITS (PUBLIC) - inchangé
 # ==========================================
 @app.route('/produits', methods=['GET'])
 def voir_produits():
@@ -791,6 +790,9 @@ def boutique_vendeur(id_vendeur):
     conn.close()
     return jsonify({"boutique": vendeur, "produits": produits})
 
+# ==========================================
+# TOP VUES (inchangé)
+# ==========================================
 @app.route('/produits/top-vues', methods=['GET'])
 def top_produits_vues():
     conn = obtenir_connexion()
@@ -813,7 +815,7 @@ def top_produits_vues():
     return jsonify({"status": "success", "data": produits})
 
 # ==========================================
-# CRUD PRODUITS (vendeur)
+# CRUD PRODUITS (vendeur) - inchangé
 # ==========================================
 @app.route('/produits', methods=['POST'])
 @require_csrf
@@ -941,7 +943,7 @@ def supprimer_produit(id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# UPLOAD IMAGES (Cloudinary)
+# UPLOAD IMAGES (Cloudinary) - inchangé
 # ==========================================
 @app.route('/upload/<int:produit_id>', methods=['POST'])
 @require_csrf
@@ -1021,7 +1023,7 @@ def clic_whatsapp(id):
     return jsonify({"status": "success", "message": "Clic WhatsApp enregistré"})
 
 # ==========================================
-# DASHBOARD VENDEUR
+# DASHBOARD VENDEUR - inchangé
 # ==========================================
 @app.route('/vendeurs/me/dashboard', methods=['GET'])
 def me_dashboard():
@@ -1083,7 +1085,7 @@ def supprimer_compte_vendeur():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# SIGNALEMENTS
+# SIGNALEMENTS - inchangé
 # ==========================================
 @app.route('/produits/<int:id>/signaler', methods=['POST'])
 def signaler_produit(id):
@@ -1108,7 +1110,7 @@ def signaler_produit(id):
     return jsonify({"status": "success", "message": "Signalement enregistré"}), 201
 
 # ==========================================
-# ADMIN
+# ADMIN - inchangé
 # ==========================================
 @app.route('/admin/connexion', methods=['POST'])
 def admin_connexion():
@@ -1433,7 +1435,7 @@ def admin_traiter_signalement(id):
     return jsonify({"status": "success", "message": "Signalement traité"})
 
 # ==========================================
-# AVIS
+# AVIS - inchangé
 # ==========================================
 @app.route('/produits/<int:id>/avis', methods=['GET'])
 def get_avis(id):
@@ -1474,7 +1476,7 @@ def ajouter_avis(id):
     return jsonify({"status": "success", "message": "Avis ajouté"}), 201
 
 # ==========================================
-# FAVORIS
+# FAVORIS - inchangé
 # ==========================================
 @app.route('/favoris', methods=['POST'])
 def ajouter_favori():
@@ -1521,8 +1523,9 @@ def get_favoris(email):
     conn.close()
     return jsonify({"status": "success", "data": produits})
 
+
 # ==========================================
-# GENERATION D'IMAGE DE FICHE PRODUIT
+# NOUVEAU : GENERATION D'IMAGE DE FICHE PRODUIT
 # ==========================================
 @app.route('/generer-image-produit/<int:id>')
 def generer_image_produit(id):
@@ -1541,10 +1544,12 @@ def generer_image_produit(id):
     if not produit:
         return jsonify({"error": "Produit introuvable"}), 404
 
+    # Dimensions de l'image (format idéal pour WhatsApp)
     largeur, hauteur = 1200, 630
     image = Image.new('RGB', (largeur, hauteur), color='#0f766e')
     draw = ImageDraw.Draw(image)
 
+    # Polices (fallback si Arial n'est pas disponible)
     try:
         font_titre = ImageFont.truetype("arial.ttf", 52)
         font_prix = ImageFont.truetype("arial.ttf", 48)
@@ -1556,6 +1561,7 @@ def generer_image_produit(id):
         font_texte = ImageFont.load_default()
         font_petit = ImageFont.load_default()
 
+    # --- Texte ---
     titre = produit['nom_produit'][:40]
     draw.text((40, 40), titre, fill='white', font=font_titre)
 
@@ -1574,6 +1580,7 @@ def generer_image_produit(id):
 
     draw.text((1000, 560), "Leyamo Store", fill='white', font=font_petit)
 
+    # --- Image du produit (à droite) ---
     if produit['image_url']:
         try:
             reponse = requests.get(produit['image_url'], timeout=10)
@@ -1585,6 +1592,7 @@ def generer_image_produit(id):
             draw.rectangle([600, 65, 1150, 565], fill='#1e293b')
             draw.text((700, 300), "📷 Photo", fill='white', font=font_texte)
 
+    # Sauvegarder l'image en mémoire
     img_io = BytesIO()
     image.save(img_io, 'PNG', quality=90)
     img_io.seek(0)

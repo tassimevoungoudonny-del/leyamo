@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from marshmallow import Schema, fields, validate, ValidationError
 import cloudinary
 import cloudinary.uploader
+import dns.resolver
 
 # NOUVEAU : import pour la génération d'images
 from PIL import Image, ImageDraw, ImageFont
@@ -73,6 +74,17 @@ class ResetPasswordSchema(Schema):
 # ==========================================
 # CSRF (inchangé)
 # ==========================================
+
+
+def valider_domaine_email(email):
+    """Vérifie si le domaine de l'email a un enregistrement MX."""
+    domaine = email.split('@')[1]
+    try:
+        dns.resolver.resolve(domaine, 'MX')
+        return True
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
+        return False
+
 def generer_token_csrf():
     token = str(uuid.uuid4())
     session['csrf_token'] = token
@@ -381,6 +393,9 @@ def inscription_vendeur():
         data = InscriptionSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
+    # Dans inscription_vendeur()
+    if not valider_domaine_email(data['email']):
+        return jsonify({"status": "error", "message": "L'email fourni n'existe pas ou le domaine est invalide."}), 400
     mdp_hash = hash_mot_de_passe(data['mot_de_passe'])
     conn = obtenir_connexion()
     if not conn:
@@ -492,16 +507,21 @@ def reset_password():
         data = ResetPasswordSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Email invalide", "errors": err.messages}), 400
+
     email = data['email']
     conn = obtenir_connexion()
     if not conn:
         return jsonify({"message": "Erreur connexion BD"}), 500
+
     cur = conn.cursor()
     cur.execute("SELECT id FROM vendeurs WHERE email = %s", (email,))
     vendeur = cur.fetchone()
     cur.close()
+
     if not vendeur:
+        conn.close()
         return jsonify({"message": "Aucun compte associé à cet email"}), 404
+
     token = str(uuid.uuid4())
     cur = conn.cursor()
     cur.execute(
@@ -511,7 +531,15 @@ def reset_password():
     conn.commit()
     cur.close()
     conn.close()
-    envoyer_email_reset(email, token)
+
+    # 👇 VÉRIFICATION DU RETOUR DE L'ENVOI D'EMAIL
+    envoye = envoyer_email_reset(email, token)
+    if not envoye:
+        return jsonify({
+            "status": "error",
+            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun."
+        }), 500
+
     log_action("reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Email de réinitialisation envoyé"}), 200
 
@@ -1469,6 +1497,7 @@ def get_favoris(email):
     cur.close()
     conn.close()
     return jsonify({"status": "success", "data": produits})
+
 
 # ==========================================
 # NOUVEAU : GENERATION D'IMAGE DE FICHE PRODUIT

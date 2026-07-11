@@ -4,6 +4,7 @@ import bcrypt
 import jwt
 import logging
 import requests
+import smtplib
 from datetime import datetime, timedelta
 from functools import wraps, lru_cache
 from flask import Flask, jsonify, request, send_from_directory, session, render_template, send_file
@@ -17,6 +18,8 @@ import dns.resolver
 import socket
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from config import (
     JWT_SECRET, UPLOAD_CONFIG, MAILGUN_API_KEY, MAILGUN_DOMAIN,
@@ -150,64 +153,68 @@ def envoyer_notification(type_notif, destinataire, destinataire_id, message, lie
         except Exception as e:
             logger.error(f"Notification error: {e}")
 
-def envoyer_email_confirmation(email, nom, token):
-    if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
-        logger.warning("Mailgun non configuré, email non envoyé")
+# ==========================================
+# ENVOI D'EMAILS AVEC BREVO (SMTP)
+# ==========================================
+def envoyer_email_brevo(destinataire, sujet, html):
+    """Envoie un email via le serveur SMTP de Brevo."""
+    smtp_server = os.getenv("BREVO_SMTP_SERVER", "smtp-relay.sendinblue.com")
+    smtp_port = int(os.getenv("BREVO_SMTP_PORT", 587))
+    smtp_user = os.getenv("BREVO_SMTP_USER")
+    smtp_password = os.getenv("BREVO_SMTP_PASSWORD")
+    from_email = os.getenv("BREVO_FROM_EMAIL", "noreply@leyamo.com")
+    from_name = os.getenv("BREVO_FROM_NAME", "Leyamo")
+
+    if not smtp_user or not smtp_password:
+        logger.warning("Brevo SMTP non configuré (identifiants manquants)")
         return False
+
+    msg = MIMEMultipart('alternative')
+    msg['From'] = f"{from_name} <{from_email}>"
+    msg['To'] = destinataire
+    msg['Subject'] = sujet
+    msg.attach(MIMEText(html, 'html'))
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        logger.info(f"Email envoyé à {destinataire} via Brevo")
+        return True
+    except Exception as e:
+        logger.error(f"Erreur envoi email via Brevo: {e}")
+        return False
+
+def envoyer_email_confirmation(email, nom, token):
+    sujet = "Confirmation de votre email - Leyamo"
     lien = f"{FRONTEND_URL}/confirmer-email?token={token}"
     html = f"""
     <h1>Bienvenue sur Leyamo !</h1>
     <p>Bonjour {nom},</p>
-    <p>Pour confirmer votre email, cliquez sur le lien :</p>
-    <a href="{lien}">Confirmer mon email</a>
-    <p>Ce lien expire dans 24h.</p>
+    <p>Merci de vous être inscrit. Pour confirmer votre email et activer votre compte, cliquez sur le lien ci-dessous :</p>
+    <p><a href="{lien}" style="background:#0f766e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Confirmer mon email</a></p>
+    <p>Ce lien expire dans 24 heures.</p>
+    <br>
+    <p>L'équipe Leyamo</p>
     """
-    try:
-        r = requests.post(
-            f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
-            auth=("api", MAILGUN_API_KEY),
-            data={
-                "from": f"Leyamo <noreply@{MAILGUN_DOMAIN}>",
-                "to": [email],
-                "subject": "Confirmation email - Leyamo",
-                "html": html
-            },
-            timeout=30
-        )
-        logger.info(f"Mailgun confirmation: {r.status_code}")
-        return r.status_code == 200
-    except Exception as e:
-        logger.error(f"Erreur envoi confirmation email: {e}")
-        return False
+    return envoyer_email_brevo(email, sujet, html)
 
 def envoyer_email_reset(email, token):
-    if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
-        logger.warning("Mailgun non configuré, email non envoyé")
-        return False
+    sujet = "Réinitialisation de votre mot de passe - Leyamo"
     lien = f"{FRONTEND_URL}/reset-password?token={token}"
     html = f"""
     <h1>Réinitialisation de votre mot de passe</h1>
-    <p>Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :</p>
-    <a href="{lien}">Réinitialiser mon mot de passe</a>
-    <p>Ce lien expire dans 24h.</p>
+    <p>Bonjour,</p>
+    <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous pour choisir un nouveau mot de passe :</p>
+    <p><a href="{lien}" style="background:#0f766e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Réinitialiser mon mot de passe</a></p>
+    <p>Ce lien expire dans 24 heures.</p>
+    <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+    <br>
+    <p>L'équipe Leyamo</p>
     """
-    try:
-        r = requests.post(
-            f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
-            auth=("api", MAILGUN_API_KEY),
-            data={
-                "from": f"Leyamo <noreply@{MAILGUN_DOMAIN}>",
-                "to": [email],
-                "subject": "Réinitialisation mot de passe - Leyamo",
-                "html": html
-            },
-            timeout=30
-        )
-        logger.info(f"Mailgun reset: {r.status_code}")
-        return r.status_code == 200
-    except Exception as e:
-        logger.error(f"Erreur envoi reset email: {e}")
-        return False
+    return envoyer_email_brevo(email, sujet, html)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in UPLOAD_CONFIG['allowed_extensions']
@@ -216,7 +223,7 @@ def formater_prix(prix):
     return f"{int(prix):,}".replace(',', ' ')
 
 # ==========================================
-# VALIDATION DOMAINE EMAIL (CORRECTE)
+# VALIDATION DOMAINE EMAIL
 # ==========================================
 def valider_domaine_email(email):
     """
@@ -444,12 +451,16 @@ def inscription_vendeur():
             (data['email'], token)
         )
         conn.commit()
-        envoyer_email_confirmation(data['email'], data['nom'], token)
+        # Envoyer l'email de confirmation avec Brevo
+        envoye = envoyer_email_confirmation(data['email'], data['nom'], token)
+        if not envoye:
+            logger.warning(f"Échec envoi email confirmation pour {data['email']}")
+            # On ne bloque pas l'inscription, mais on logge
         log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
         envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin#vendeurs")
         cur.close()
         conn.close()
-        return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
+        return jsonify({"message": "Inscription réussie. Un email de confirmation vous a été envoyé."}), 201
     except Exception as e:
         import traceback
         conn.rollback()
@@ -550,6 +561,7 @@ def reset_password():
     cur.close()
     conn.close()
 
+    # Envoyer l'email avec Brevo
     try:
         envoye = envoyer_email_reset(email, token)
     except Exception as e:
@@ -563,7 +575,7 @@ def reset_password():
         logger.error(f"Échec envoi email reset pour {email}")
         return jsonify({
             "status": "error",
-            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun (clé API, domaine, ou quota)."
+            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Brevo (identifiants SMTP)."
         }), 500
 
     log_action("reset_password", f"Email: {email}", request.remote_addr)
@@ -599,6 +611,7 @@ def confirm_reset_password():
     conn.close()
     log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
+
 
 # ==========================================
 # PRODUITS (PUBLIC)

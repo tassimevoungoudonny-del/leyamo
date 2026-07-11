@@ -397,6 +397,56 @@ async function publierDepuisModalVendeur(produitId) {
     }
 }
 
+async function partagerBoutique() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        afficherNotification("Veuillez vous connecter", "error");
+        window.location.href = "/connexion";
+        return;
+    }
+
+    try {
+        // Récupérer les infos du vendeur pour avoir l'ID et le nom de la boutique
+        const reponse = await fetch(`${API}/vendeurs/me`, {
+            headers: { "Authorization": token }
+        });
+        const data = await reponse.json();
+        if (data.status !== 'success') {
+            afficherNotification("Erreur lors du chargement des infos", "error");
+            return;
+        }
+
+        const vendeur = data.data;
+        const nomBoutique = vendeur.nom_boutique || 'Ma boutique';
+        const lienBoutique = `${window.location.origin}/boutique?id=${vendeur.id}`;
+
+        const message = `🛍️ Découvrez ma boutique ${nomBoutique} sur Leyamo !\n🔗 ${lienBoutique}`;
+
+        // Partager via Web Share (mobile) ou fallback
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Boutique ${nomBoutique}`,
+                    text: message
+                });
+                afficherNotification("✅ Partage effectué", "success");
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    afficherNotification("❌ Échec du partage", "error");
+                }
+            }
+        } else {
+            // Fallback : ouvrir WhatsApp avec le message
+            const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(urlWhatsApp, '_blank');
+            afficherNotification("📤 WhatsApp ouvert, envoyez le message", "info");
+        }
+    } catch (e) {
+        console.error(e);
+        afficherNotification("Erreur lors du partage", "error");
+    }
+}
+
 // Expositions globales
 window.modifierProduit = modifierProduit;
 window.supprimerProduit = supprimerProduit;
@@ -405,3 +455,4 @@ window.deconnexion = deconnexion;
 window.ouvrirModalPublicationVendeur = ouvrirModalPublicationVendeur;
 window.fermerModalPublicationVendeur = fermerModalPublicationVendeur;
 window.publierDepuisModalVendeur = publierDepuisModalVendeur;
+window.partagerBoutique = partagerBoutique;

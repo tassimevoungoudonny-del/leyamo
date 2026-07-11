@@ -14,6 +14,8 @@ from marshmallow import Schema, fields, validate, ValidationError
 import cloudinary
 import cloudinary.uploader
 import dns.resolver
+import logging
+import socket
 
 # NOUVEAU : import pour la génération d'images
 from PIL import Image, ImageDraw, ImageFont
@@ -221,6 +223,42 @@ def allowed_file(filename):
 def formater_prix(prix):
     return f"{int(prix):,}".replace(',', ' ')
 
+
+def valider_domaine_email(email):
+    """
+    Vérifie si le domaine de l'email est valide et peut recevoir des emails.
+    Utilise d'abord une requête MX (la plus fiable).
+    Si elle échoue (timeout, blocage), on tente une résolution A (IP) comme fallback.
+    """
+    domaine = email.split('@')[1]
+    
+    # Tentative 1 : résolution MX
+    try:
+        dns.resolver.resolve(domaine, 'MX')
+        return True
+    except dns.resolver.NXDOMAIN:
+        logging.warning(f"Domaine {domaine} inexistant")
+        return False
+    except dns.resolver.NoAnswer:
+        # Pas de MX, mais le domaine peut exister (ex: domaine sans serveur mail)
+        # On va vérifier s'il a une adresse IP
+        pass
+    except (dns.resolver.Timeout, Exception) as e:
+        logging.error(f"Erreur DNS pour {domaine}: {e}")
+        # Fallback : on essaie de résoudre l'IP
+        pass
+
+    # Tentative 2 : résolution A (fallback)
+    try:
+        socket.gethostbyname(domaine)
+        return True
+    except socket.gaierror:
+        logging.warning(f"Domaine {domaine} ne résout pas en IP")
+        return False
+    except Exception as e:
+        logging.error(f"Erreur socket pour {domaine}: {e}")
+        return False
+
 # ==========================================
 # CACHE (inchangé)
 # ==========================================
@@ -238,6 +276,8 @@ def get_cached_categories():
 
 def invalidate_product_cache():
     get_cached_categories.cache_clear()
+
+
 
 # ==========================================
 # ROUTES PAGES HTML (inchangées)
@@ -394,6 +434,9 @@ def inscription_vendeur():
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
     # Dans inscription_vendeur()
+    if not valider_domaine_email(data['email']):
+        return jsonify({"status": "error", "message": "L'email fourni n'existe pas ou le domaine est invalide."}), 400
+    # 👇 NOUVEAU : VÉRIFICATION DU DOMAINE
     if not valider_domaine_email(data['email']):
         return jsonify({"status": "error", "message": "L'email fourni n'existe pas ou le domaine est invalide."}), 400
     mdp_hash = hash_mot_de_passe(data['mot_de_passe'])

@@ -1,3 +1,4 @@
+
 import os
 import uuid
 import bcrypt
@@ -15,8 +16,6 @@ import cloudinary
 import cloudinary.uploader
 import dns.resolver
 import socket
-
-# NOUVEAU : import pour la génération d'images
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
@@ -152,6 +151,9 @@ def envoyer_notification(type_notif, destinataire, destinataire_id, message, lie
         except Exception as e:
             logger.error(f"Notification error: {e}")
 
+# ==========================================
+# ENVOI D'EMAILS (avec logs)
+# ==========================================
 def envoyer_email_confirmation(email, nom, token):
     if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
         logger.warning("Mailgun non configuré, email non envoyé")
@@ -176,7 +178,7 @@ def envoyer_email_confirmation(email, nom, token):
             },
             timeout=30
         )
-        logger.info(f"Mailgun réponse: {r.status_code}")
+        logger.info(f"Mailgun confirmation: {r.status_code}")
         return r.status_code == 200
     except Exception as e:
         logger.error(f"Erreur envoi confirmation email: {e}")
@@ -205,7 +207,7 @@ def envoyer_email_reset(email, token):
             },
             timeout=30
         )
-        logger.info(f"Mailgun réponse reset: {r.status_code}")
+        logger.info(f"Mailgun reset: {r.status_code}")
         return r.status_code == 200
     except Exception as e:
         logger.error(f"Erreur envoi reset email: {e}")
@@ -218,17 +220,16 @@ def formater_prix(prix):
     return f"{int(prix):,}".replace(',', ' ')
 
 # ==========================================
-# VALIDATION DOMAINE EMAIL (CORRIGÉE)
+# VALIDATION DOMAINE EMAIL (CORRECTE)
 # ==========================================
 def valider_domaine_email(email):
     """
     Vérifie que le domaine de l'email a un enregistrement MX.
     Retourne False si le domaine n'a pas de MX (ou inexistant).
-    En cas d'erreur réseau, retourne True avec un log.
+    En cas d'erreur réseau, retourne True avec un log pour ne pas bloquer.
     """
     domaine = email.split('@')[1]
     try:
-        # Timeout de 5 secondes
         dns.resolver.resolve(domaine, 'MX', lifetime=5)
         return True
     except dns.resolver.NXDOMAIN:
@@ -448,6 +449,7 @@ def inscription_vendeur():
             (data['email'], token)
         )
         conn.commit()
+        # Envoyer l'email de confirmation
         envoyer_email_confirmation(data['email'], data['nom'], token)
         log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
         envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin#vendeurs")
@@ -554,18 +556,14 @@ def reset_password():
     cur.close()
     conn.close()
 
-    # Envoyer l'email
-    try:
-        envoye = envoyer_email_reset(email, token)
-        if not envoye:
-            logging.error(f"Échec envoi email reset pour {email}")
-            return jsonify({
-                "status": "error",
-                "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun."
-            }), 500
-    except Exception as e:
-        logging.error(f"Exception lors de l'envoi email reset: {e}")
-        return jsonify({"status": "error", "message": "Erreur interne lors de l'envoi de l'email."}), 500
+    # Envoyer l'email de réinitialisation
+    envoye = envoyer_email_reset(email, token)
+    if not envoye:
+        logger.error(f"Échec envoi email reset pour {email}")
+        return jsonify({
+            "status": "error",
+            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun."
+        }), 500
 
     log_action("reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Email de réinitialisation envoyé"}), 200
@@ -601,19 +599,6 @@ def confirm_reset_password():
     log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
-# ==========================================
-# PRODUITS (PUBLIC)
-# ==========================================
-# (Toutes vos routes existantes pour produits, upload, dashboard, admin, etc.)
-# Je les laisse inchangées pour ne pas alourdir, mais vous devez les conserver.
-# Assurez-vous que tout votre code CRUD, admin, signalements, etc. est présent ici.
-
-# ==========================================
-# LANCEMENT
-# ==========================================
-if __name__ == "__main__":
-    os.makedirs('uploads', exist_ok=True)
-    app.run(debug=False, host='0.0.0.0', port=5000)
 # ==========================================
 # PRODUITS (PUBLIC) - inchangé
 # ==========================================

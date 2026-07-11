@@ -14,7 +14,6 @@ from marshmallow import Schema, fields, validate, ValidationError
 import cloudinary
 import cloudinary.uploader
 import dns.resolver
-import logging
 import socket
 
 # NOUVEAU : import pour la génération d'images
@@ -46,7 +45,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# SCHEMAS (inchangés)
+# SCHEMAS
 # ==========================================
 class InscriptionSchema(Schema):
     nom = fields.Str(required=True, validate=validate.Length(min=2, max=100))
@@ -74,19 +73,8 @@ class ResetPasswordSchema(Schema):
     email = fields.Email(required=True)
 
 # ==========================================
-# CSRF (inchangé)
+# CSRF
 # ==========================================
-
-
-def valider_domaine_email(email):
-    """Vérifie si le domaine de l'email a un enregistrement MX."""
-    domaine = email.split('@')[1]
-    try:
-        dns.resolver.resolve(domaine, 'MX')
-        return True
-    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
-        return False
-
 def generer_token_csrf():
     token = str(uuid.uuid4())
     session['csrf_token'] = token
@@ -106,7 +94,7 @@ def require_csrf(f):
     return decorated_function
 
 # ==========================================
-# FONCTIONS UTILITAIRES (inchangées)
+# FONCTIONS UTILITAIRES
 # ==========================================
 def hash_mot_de_passe(mot_de_passe):
     return bcrypt.hashpw(mot_de_passe.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -166,6 +154,7 @@ def envoyer_notification(type_notif, destinataire, destinataire_id, message, lie
 
 def envoyer_email_confirmation(email, nom, token):
     if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
+        logger.warning("Mailgun non configuré, email non envoyé")
         return False
     lien = f"{FRONTEND_URL}/confirmer-email?token={token}"
     html = f"""
@@ -187,12 +176,15 @@ def envoyer_email_confirmation(email, nom, token):
             },
             timeout=30
         )
+        logger.info(f"Mailgun réponse: {r.status_code}")
         return r.status_code == 200
-    except:
+    except Exception as e:
+        logger.error(f"Erreur envoi confirmation email: {e}")
         return False
 
 def envoyer_email_reset(email, token):
     if not MAILGUN_API_KEY or not MAILGUN_DOMAIN:
+        logger.warning("Mailgun non configuré, email non envoyé")
         return False
     lien = f"{FRONTEND_URL}/reset-password?token={token}"
     html = f"""
@@ -213,8 +205,10 @@ def envoyer_email_reset(email, token):
             },
             timeout=30
         )
+        logger.info(f"Mailgun réponse reset: {r.status_code}")
         return r.status_code == 200
-    except:
+    except Exception as e:
+        logger.error(f"Erreur envoi reset email: {e}")
         return False
 
 def allowed_file(filename):
@@ -223,44 +217,33 @@ def allowed_file(filename):
 def formater_prix(prix):
     return f"{int(prix):,}".replace(',', ' ')
 
-
+# ==========================================
+# VALIDATION DOMAINE EMAIL (CORRIGÉE)
+# ==========================================
 def valider_domaine_email(email):
     """
-    Vérifie si le domaine de l'email est valide et peut recevoir des emails.
-    Utilise d'abord une requête MX (la plus fiable).
-    Si elle échoue (timeout, blocage), on tente une résolution A (IP) comme fallback.
+    Vérifie que le domaine de l'email a un enregistrement MX.
+    Retourne False si le domaine n'a pas de MX (ou inexistant).
+    En cas d'erreur réseau, retourne True avec un log.
     """
     domaine = email.split('@')[1]
-    
-    # Tentative 1 : résolution MX
     try:
-        dns.resolver.resolve(domaine, 'MX')
+        # Timeout de 5 secondes
+        dns.resolver.resolve(domaine, 'MX', lifetime=5)
         return True
     except dns.resolver.NXDOMAIN:
-        logging.warning(f"Domaine {domaine} inexistant")
+        logger.warning(f"Domaine inexistant: {domaine}")
         return False
     except dns.resolver.NoAnswer:
-        # Pas de MX, mais le domaine peut exister (ex: domaine sans serveur mail)
-        # On va vérifier s'il a une adresse IP
-        pass
-    except (dns.resolver.Timeout, Exception) as e:
-        logging.error(f"Erreur DNS pour {domaine}: {e}")
-        # Fallback : on essaie de résoudre l'IP
-        pass
-
-    # Tentative 2 : résolution A (fallback)
-    try:
-        socket.gethostbyname(domaine)
-        return True
-    except socket.gaierror:
-        logging.warning(f"Domaine {domaine} ne résout pas en IP")
+        logger.warning(f"Domaine sans enregistrement MX: {domaine}")
         return False
     except Exception as e:
-        logging.error(f"Erreur socket pour {domaine}: {e}")
-        return False
+        logger.error(f"Erreur DNS pour {domaine}: {e}")
+        # En cas d'erreur réseau, on accepte pour ne pas bloquer
+        return True
 
 # ==========================================
-# CACHE (inchangé)
+# CACHE
 # ==========================================
 @lru_cache(maxsize=128)
 def get_cached_categories():
@@ -277,10 +260,8 @@ def get_cached_categories():
 def invalidate_product_cache():
     get_cached_categories.cache_clear()
 
-
-
 # ==========================================
-# ROUTES PAGES HTML (inchangées)
+# ROUTES PAGES HTML
 # ==========================================
 @app.route('/')
 def index():
@@ -331,7 +312,7 @@ def reset_password_page():
     return send_from_directory('.', 'reset-password.html')
 
 # ==========================================
-# ROUTE PRODUIT AVEC RENDER_TEMPLATE
+# ROUTE PRODUIT
 # ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
@@ -360,7 +341,6 @@ def afficher_produit_html(id):
 
     produit["images"] = [img["image_url"] for img in images]
 
-    # Image OG avec redimensionnement Cloudinary
     if produit["images"]:
         image_og = produit["images"][0]
         if 'cloudinary' in image_og and '/upload/' in image_og:
@@ -425,7 +405,7 @@ def test_db():
         return {"status": "DB ERROR", "message": str(e)}, 500
 
 # ==========================================
-# AUTHENTIFICATION VENDEUR (inchangé)
+# AUTHENTIFICATION VENDEUR
 # ==========================================
 @app.route('/vendeurs/inscription', methods=['POST'])
 def inscription_vendeur():
@@ -433,12 +413,11 @@ def inscription_vendeur():
         data = InscriptionSchema().load(request.get_json())
     except ValidationError as err:
         return jsonify({"status": "error", "message": "Données invalides", "errors": err.messages}), 400
-    # Dans inscription_vendeur()
+
+    # Vérification du domaine (une seule fois)
     if not valider_domaine_email(data['email']):
         return jsonify({"status": "error", "message": "L'email fourni n'existe pas ou le domaine est invalide."}), 400
-    # 👇 NOUVEAU : VÉRIFICATION DU DOMAINE
-    if not valider_domaine_email(data['email']):
-        return jsonify({"status": "error", "message": "L'email fourni n'existe pas ou le domaine est invalide."}), 400
+
     mdp_hash = hash_mot_de_passe(data['mot_de_passe'])
     conn = obtenir_connexion()
     if not conn:
@@ -575,13 +554,18 @@ def reset_password():
     cur.close()
     conn.close()
 
-    # 👇 VÉRIFICATION DU RETOUR DE L'ENVOI D'EMAIL
-    envoye = envoyer_email_reset(email, token)
-    if not envoye:
-        return jsonify({
-            "status": "error",
-            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun."
-        }), 500
+    # Envoyer l'email
+    try:
+        envoye = envoyer_email_reset(email, token)
+        if not envoye:
+            logging.error(f"Échec envoi email reset pour {email}")
+            return jsonify({
+                "status": "error",
+                "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Mailgun."
+            }), 500
+    except Exception as e:
+        logging.error(f"Exception lors de l'envoi email reset: {e}")
+        return jsonify({"status": "error", "message": "Erreur interne lors de l'envoi de l'email."}), 500
 
     log_action("reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Email de réinitialisation envoyé"}), 200
@@ -617,6 +601,19 @@ def confirm_reset_password():
     log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
+# ==========================================
+# PRODUITS (PUBLIC)
+# ==========================================
+# (Toutes vos routes existantes pour produits, upload, dashboard, admin, etc.)
+# Je les laisse inchangées pour ne pas alourdir, mais vous devez les conserver.
+# Assurez-vous que tout votre code CRUD, admin, signalements, etc. est présent ici.
+
+# ==========================================
+# LANCEMENT
+# ==========================================
+if __name__ == "__main__":
+    os.makedirs('uploads', exist_ok=True)
+    app.run(debug=False, host='0.0.0.0', port=5000)
 # ==========================================
 # PRODUITS (PUBLIC) - inchangé
 # ==========================================

@@ -1604,6 +1604,48 @@ def generer_image_produit(id):
 
     return send_file(img_io, mimetype='image/png')
 
+@app.route('/test-brevo')
+def test_brevo():
+    """Teste la configuration SMTP de Brevo."""
+    import smtplib
+    from email.mime.text import MIMEText
+
+    smtp_server = os.getenv("BREVO_SMTP_SERVER", "smtp-relay.brevo.com")
+    smtp_port = int(os.getenv("BREVO_SMTP_PORT", 587))
+    smtp_user = os.getenv("BREVO_SMTP_USER")
+    smtp_password = os.getenv("BREVO_SMTP_PASSWORD")
+    from_email = os.getenv("BREVO_FROM_EMAIL")
+
+    # Vérification des variables
+    missing = []
+    if not smtp_user: missing.append("BREVO_SMTP_USER")
+    if not smtp_password: missing.append("BREVO_SMTP_PASSWORD")
+    if not from_email: missing.append("BREVO_FROM_EMAIL")
+
+    if missing:
+        return jsonify({
+            "status": "error",
+            "message": f"Variables manquantes : {', '.join(missing)}"
+        }), 500
+
+    # Tester la connexion SMTP
+    try:
+        msg = MIMEText("Ceci est un test de configuration Brevo.")
+        msg['From'] = from_email
+        msg['To'] = from_email  # on s'envoie un test à soi-même
+        msg['Subject'] = "Test Brevo"
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        return jsonify({"status": "success", "message": "Email test envoyé avec succès !"})
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Erreur SMTP : {str(e)}"
+        }), 500    
+
 # ==========================================
 # LANCEMENT
 # ==========================================

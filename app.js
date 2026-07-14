@@ -4,6 +4,7 @@ let genreActuel = "all";
 let limit = 30;
 let prixMin = 0;
 let prixMax = 100000;
+let autocompleteTimeout;
 
 const DEFAULT_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='28' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
 
@@ -44,9 +45,9 @@ document.addEventListener("scroll", reinitialiserTimer);
 document.addEventListener("mousemove", reinitialiserTimer);
 reinitialiserTimer();
 
-function getUrlParams() {
+function getUrlParams(page = 1) {
     const params = new URLSearchParams();
-    params.set('page', 1);
+    params.set('page', page);
     params.set('limit', limit);
     if (categorieActuelle && categorieActuelle !== 'all') params.set('categorie', categorieActuelle);
     if (genreActuel && genreActuel !== 'all') params.set('genre', genreActuel);
@@ -58,15 +59,12 @@ function getUrlParams() {
 async function chargerProduits(page = 1) {
     const filtres = document.querySelectorAll('.filtre-btn, .filtre-genre');
     filtres.forEach(btn => btn.disabled = true);
-    const params = getUrlParams();
-    params.set('page', page);
+    const params = getUrlParams(page);
     const url = `${API}/produits/filtrer?${params}`;
-    console.log("🔍 Appel API :", url);
     afficherLoader(true);
     try {
         const reponse = await fetch(url);
         const data = await reponse.json();
-        console.log("✅ Données reçues :", data);
         afficherProduits(data.data);
         afficherPagination(data.pagination);
         const compteur = document.getElementById("compteur-produits");
@@ -91,8 +89,48 @@ async function appliquerFiltres(page = 1) {
     chargerProduits(page);
 }
 
-let autocompleteTimeout;
+// ============================================
+// RECHERCHE AVEC DEBOUNCE ET GESTION DE PAGE
+// ============================================
+async function rechercherProduit(page = 1) {
+    const rechercheInput = document.getElementById("recherche");
+    const motCle = rechercheInput ? rechercheInput.value.trim() : "";
+
+    // Si le champ de recherche est vide, on utilise le filtrage normal
+    if (motCle === "") {
+        chargerProduits(page);
+        return;
+    }
+
+    afficherLoader(true);
+    try {
+        const reponse = await fetch(`${API}/recherche?q=${encodeURIComponent(motCle)}&page=${page}&limit=${limit}`);
+        const data = await reponse.json();
+        afficherProduits(data.resultats);
+        afficherPagination(data.pagination);
+        const compteur = document.getElementById("compteur-produits");
+        if (compteur) {
+            const total = data.pagination?.total || 0;
+            compteur.textContent = total === 0 ? "Aucun produit trouvé" :
+                                    total === 1 ? "1 produit trouvé" :
+                                    `${total} produits trouvés`;
+        }
+        document.getElementById("autocomplete-list")?.classList.remove("active");
+    } catch (erreur) {
+        afficherNotification("Erreur lors de la recherche", "error");
+    } finally {
+        afficherLoader(false);
+    }
+}
+
+// ============================================
+// AUTOCOMPLÉTION AVEC DEBOUNCE
+// ============================================
 async function autocomplete(q) {
+    if (q.length < 2) {
+        document.getElementById("autocomplete-list")?.classList.remove("active");
+        return;
+    }
     try {
         const reponse = await fetch(`${API}/produits/autocomplete?q=${encodeURIComponent(q)}`);
         const data = await reponse.json();
@@ -133,36 +171,6 @@ document.addEventListener("click", function(e) {
     }
 });
 
-async function rechercherProduit(page = 1) {
-    const rechercheInput = document.getElementById("recherche");
-    if (!rechercheInput) return;
-    const motCle = rechercheInput.value.trim();
-    if (!motCle) {
-        appliquerFiltres(1);
-        return;
-    }
-    afficherLoader(true);
-    try {
-        const reponse = await fetch(`${API}/recherche?q=${motCle}&page=${page}&limit=${limit}`);
-        const data = await reponse.json();
-        afficherProduits(data.resultats);
-        afficherPagination(data.pagination);
-         // ---- AJOUT : mettre à jour le compteur avec le total de la recherche ----
-        const compteur = document.getElementById("compteur-produits");
-        if (compteur) {
-            const total = data.pagination?.total || 0;
-            compteur.textContent = total === 0 ? "Aucun produit trouvé" :
-                                    total === 1 ? "1 produit trouvé" :
-                                    `${total} produits trouvés`;
-        }
-        document.getElementById("autocomplete-list")?.classList.remove("active");
-    } catch (erreur) {
-        afficherNotification("Erreur lors de la recherche", "error");
-    } finally {
-        afficherLoader(false);
-    }
-}
-
 function reinitialiserRecherche() {
     const rechercheInput = document.getElementById("recherche");
     if (rechercheInput) rechercheInput.value = "";
@@ -183,7 +191,7 @@ function reinitialiserRecherche() {
     document.querySelectorAll(".filtre-btn, .filtre-genre").forEach(b => b.classList.remove("active"));
     document.querySelector(".filtre-btn[data-categorie='all']")?.classList.add("active");
     document.querySelector(".filtre-genre[data-genre='all']")?.classList.add("active");
-    appliquerFiltres(1);
+    chargerProduits(1);
     afficherNotification("Tous les produits", "success");
 }
 
@@ -193,6 +201,7 @@ function afficherPagination(pagination) {
     container.innerHTML = "";
     if (!pagination || pagination.pages <= 1) return;
     const { page, pages, total } = pagination;
+
     if (page > 1) {
         const btn = document.createElement("button");
         btn.textContent = "◀";
@@ -341,7 +350,9 @@ async function signalerProduit(id, nom) {
     }
 }
 
-
+// ============================================
+// INITIALISATION
+// ============================================
 document.addEventListener("DOMContentLoaded", function() {
     console.log("🚀 DOM chargé, initialisation...");
     const darkBtn = document.querySelector(".btn-darkmode");
@@ -475,6 +486,7 @@ function ouvrirLightbox(src) {
     });
 }
 
+// Expositions globales
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;
 window.signalerProduit = signalerProduit;

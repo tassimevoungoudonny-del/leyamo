@@ -11,13 +11,13 @@
     <div class="login-box">
         <h2>Modifier le <span>produit</span></h2>
         <p id="info-produit" style="font-size:13px; color:#64748b; margin-bottom:12px;"></p>
-        <label for="nom_produit">Nom</label>
+        <label for="nom_produit">Nom *</label>
         <input type="text" id="nom_produit">
         <label for="description_produit">Description</label>
         <textarea id="description_produit"></textarea>
-        <label for="prix">Prix (FCFA)</label>
+        <label for="prix">Prix (FCFA) *</label>
         <input type="number" id="prix">
-        <label for="categorie">Catégorie</label>
+        <label for="categorie">Catégorie *</label>
         <select id="categorie">
             <option value="Vêtements">Vêtements</option>
             <option value="Chaussures">Chaussures</option>
@@ -33,9 +33,16 @@
             <option value="masculin">Masculin</option>
             <option value="feminin">Féminin</option>
         </select>
-        <label for="images_produit">Nouvelles photos (3 max, 10 Mo)</label>
-        <input type="file" id="images_produit" accept="image/*" multiple>
-        <div id="preview-images" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
+
+        <!-- NOUVEAU : champ image avec aperçu -->
+        <label for="image_produit">Image du produit (optionnel)</label>
+        <img id="image_actuelle" src="" style="max-width:100px; max-height:100px; display:block; margin-bottom:10px;">
+        <input type="file" id="image_produit" accept="image/*">
+        <div id="preview-nouvelle-image" style="display:none; margin-top:10px;">
+            <p>Nouvelle image sélectionnée :</p>
+            <img id="nouvelle-image-preview" src="" style="max-width:100px; max-height:100px;">
+        </div>
+
         <button onclick="modifierProduit()" id="btn-modifier">Enregistrer</button>
         <p id="message"></p>
     </div>

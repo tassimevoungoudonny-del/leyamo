@@ -125,7 +125,6 @@ async function rechercherProduit(page = 1) {
 // ============================================
 // AUTOCOMPLÉTION AVEC DEBOUNCE
 // ============================================
-let autocompleteTimeout;
 
 async function autocomplete(q) {
     if (q.length < 2) {

@@ -90,13 +90,12 @@ async function appliquerFiltres(page = 1) {
 }
 
 // ============================================
-// RECHERCHE AVEC DEBOUNCE ET GESTION DE PAGE
+// RECHERCHE AVEC PAGINATION CORRECTE
 // ============================================
 async function rechercherProduit(page = 1) {
     const rechercheInput = document.getElementById("recherche");
     const motCle = rechercheInput ? rechercheInput.value.trim() : "";
 
-    // Si le champ de recherche est vide, on utilise le filtrage normal
     if (motCle === "") {
         chargerProduits(page);
         return;
@@ -126,6 +125,8 @@ async function rechercherProduit(page = 1) {
 // ============================================
 // AUTOCOMPLÉTION AVEC DEBOUNCE
 // ============================================
+let autocompleteTimeout;
+
 async function autocomplete(q) {
     if (q.length < 2) {
         document.getElementById("autocomplete-list")?.classList.remove("active");
@@ -165,6 +166,21 @@ function afficherAutocomplete(resultats) {
     });
 }
 
+// Dans DOMContentLoaded, ajouter :
+rechercheInput.addEventListener("input", function() {
+    const value = this.value.trim();
+    const clearBtn = document.getElementById("clear-search");
+    if (clearBtn) clearBtn.style.display = value.length > 0 ? "flex" : "none";
+    clearTimeout(autocompleteTimeout);
+    if (value.length >= 2) {
+        autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
+    } else {
+        document.getElementById("autocomplete-list")?.classList.remove("active");
+    }
+});
+rechercheInput.addEventListener("keyup", function(e) {
+    if (e.key === "Enter") rechercherProduit(1);
+});
 document.addEventListener("click", function(e) {
     if (!e.target.closest(".search-box")) {
         document.getElementById("autocomplete-list")?.classList.remove("active");

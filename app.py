@@ -46,7 +46,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# SCHEMAS
+# SCHEMAS (inchangés)
 # ==========================================
 class InscriptionSchema(Schema):
     nom = fields.Str(required=True, validate=validate.Length(min=2, max=100))
@@ -74,7 +74,7 @@ class ResetPasswordSchema(Schema):
     email = fields.Email(required=True)
 
 # ==========================================
-# CSRF
+# CSRF (inchangé)
 # ==========================================
 def generer_token_csrf():
     token = str(uuid.uuid4())
@@ -157,8 +157,7 @@ def envoyer_notification(type_notif, destinataire, destinataire_id, message, lie
 # ENVOI D'EMAILS AVEC BREVO (SMTP)
 # ==========================================
 def envoyer_email_brevo(destinataire, sujet, html):
-    """Envoie un email via le serveur SMTP de Brevo."""
-    smtp_server = os.getenv("BREVO_SMTP_SERVER", "smtp-relay.sendinblue.com")
+    smtp_server = os.getenv("BREVO_SMTP_SERVER", "smtp-relay.brevo.com")
     smtp_port = int(os.getenv("BREVO_SMTP_PORT", 587))
     smtp_user = os.getenv("BREVO_SMTP_USER")
     smtp_password = os.getenv("BREVO_SMTP_PASSWORD")
@@ -166,7 +165,7 @@ def envoyer_email_brevo(destinataire, sujet, html):
     from_name = os.getenv("BREVO_FROM_NAME", "Leyamo")
 
     if not smtp_user or not smtp_password:
-        logger.warning("Brevo SMTP non configuré (identifiants manquants)")
+        logger.warning("Brevo SMTP non configuré")
         return False
 
     msg = MIMEMultipart('alternative')
@@ -184,7 +183,7 @@ def envoyer_email_brevo(destinataire, sujet, html):
         logger.info(f"Email envoyé à {destinataire} via Brevo")
         return True
     except Exception as e:
-        logger.error(f"Erreur envoi email via Brevo: {e}")
+        logger.error(f"Erreur envoi email: {e}")
         return False
 
 def envoyer_email_confirmation(email, nom, token):
@@ -193,11 +192,10 @@ def envoyer_email_confirmation(email, nom, token):
     html = f"""
     <h1>Bienvenue sur Leyamo !</h1>
     <p>Bonjour {nom},</p>
-    <p>Merci de vous être inscrit. Pour confirmer votre email et activer votre compte, cliquez sur le lien ci-dessous :</p>
+    <p>Pour confirmer votre email, cliquez sur le lien :</p>
     <p><a href="{lien}" style="background:#0f766e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Confirmer mon email</a></p>
-    <p>Ce lien expire dans 24 heures.</p>
-    <br>
-    <p>L'équipe Leyamo</p>
+    <p>Ce lien expire dans 24h.</p>
+    <br><p>L'équipe Leyamo</p>
     """
     return envoyer_email_brevo(email, sujet, html)
 
@@ -207,12 +205,10 @@ def envoyer_email_reset(email, token):
     html = f"""
     <h1>Réinitialisation de votre mot de passe</h1>
     <p>Bonjour,</p>
-    <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous pour choisir un nouveau mot de passe :</p>
+    <p>Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :</p>
     <p><a href="{lien}" style="background:#0f766e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">Réinitialiser mon mot de passe</a></p>
-    <p>Ce lien expire dans 24 heures.</p>
-    <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
-    <br>
-    <p>L'équipe Leyamo</p>
+    <p>Ce lien expire dans 24h.</p>
+    <br><p>L'équipe Leyamo</p>
     """
     return envoyer_email_brevo(email, sujet, html)
 
@@ -226,25 +222,15 @@ def formater_prix(prix):
 # VALIDATION DOMAINE EMAIL
 # ==========================================
 def valider_domaine_email(email):
-    """
-    Vérifie que le domaine de l'email a un enregistrement MX.
-    Retourne False si le domaine n'a pas de MX (ou inexistant).
-    En cas d'erreur réseau, retourne True avec un log pour ne pas bloquer.
-    """
     domaine = email.split('@')[1]
     try:
         dns.resolver.resolve(domaine, 'MX', lifetime=5)
         return True
-    except dns.resolver.NXDOMAIN:
-        logger.warning(f"Domaine inexistant: {domaine}")
-        return False
-    except dns.resolver.NoAnswer:
-        logger.warning(f"Domaine sans enregistrement MX: {domaine}")
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         return False
     except Exception as e:
-        logger.error(f"Erreur DNS pour {domaine}: {e}")
-        # En cas d'erreur réseau, on accepte pour ne pas bloquer
-        return True
+        logger.error(f"DNS error: {e}")
+        return True  # fallback pour ne pas bloquer
 
 # ==========================================
 # CACHE
@@ -316,7 +302,7 @@ def reset_password_page():
     return send_from_directory('.', 'reset-password.html')
 
 # ==========================================
-# ROUTE PRODUIT
+# ROUTE PRODUIT (avec incrémentation des vues)
 # ==========================================
 @app.route('/produit/<int:id>')
 def afficher_produit_html(id):
@@ -325,6 +311,10 @@ def afficher_produit_html(id):
         return "Erreur de connexion à la base de données", 500
 
     cur = conn.cursor()
+    # Incrémenter les vues
+    cur.execute("UPDATE produits SET vues = vues + 1 WHERE id = %s", (id,))
+    conn.commit()
+
     cur.execute("""
         SELECT produits.*, vendeurs.nom_boutique, vendeurs.num_whatsapp,
                vendeurs.localisation_boutique, vendeurs.localisation_detaillee
@@ -409,7 +399,7 @@ def test_db():
         return {"status": "DB ERROR", "message": str(e)}, 500
 
 # ==========================================
-# AUTHENTIFICATION VENDEUR
+# AUTHENTIFICATION VENDEUR (inchangée)
 # ==========================================
 @app.route('/vendeurs/inscription', methods=['POST'])
 def inscription_vendeur():
@@ -451,16 +441,12 @@ def inscription_vendeur():
             (data['email'], token)
         )
         conn.commit()
-        # Envoyer l'email de confirmation avec Brevo
-        envoye = envoyer_email_confirmation(data['email'], data['nom'], token)
-        if not envoye:
-            logger.warning(f"Échec envoi email confirmation pour {data['email']}")
-            # On ne bloque pas l'inscription, mais on logge
+        envoyer_email_confirmation(data['email'], data['nom'], token)
         log_action("inscription_vendeur", f"Email: {data['email']}", request.remote_addr)
         envoyer_notification("nouveau_vendeur", "admin", 1, f"Nouveau vendeur : {data['nom']}", "/admin#vendeurs")
         cur.close()
         conn.close()
-        return jsonify({"message": "Inscription réussie. Un email de confirmation vous a été envoyé."}), 201
+        return jsonify({"message": "Inscription réussie. Vérifiez votre email."}), 201
     except Exception as e:
         import traceback
         conn.rollback()
@@ -561,7 +547,6 @@ def reset_password():
     cur.close()
     conn.close()
 
-    # Envoyer l'email avec Brevo
     try:
         envoye = envoyer_email_reset(email, token)
     except Exception as e:
@@ -575,7 +560,7 @@ def reset_password():
         logger.error(f"Échec envoi email reset pour {email}")
         return jsonify({
             "status": "error",
-            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Brevo (identifiants SMTP)."
+            "message": "Impossible d'envoyer l'email de réinitialisation. Vérifiez la configuration Brevo."
         }), 500
 
     log_action("reset_password", f"Email: {email}", request.remote_addr)
@@ -612,9 +597,8 @@ def confirm_reset_password():
     log_action("confirm_reset_password", f"Email: {email}", request.remote_addr)
     return jsonify({"message": "Mot de passe réinitialisé avec succès"}), 200
 
-
 # ==========================================
-# PRODUITS (PUBLIC)
+# PRODUITS (PUBLIC) - avec recherche optimisée
 # ==========================================
 @app.route('/produits', methods=['GET'])
 def voir_produits():
@@ -743,10 +727,11 @@ def autocomplete_produits():
     if not conn:
         return jsonify({"status": "error", "message": "Erreur connexion"}), 500
     cur = conn.cursor()
+    # Recherche insensible à la casse et limitée à 10 résultats
     cur.execute("""
         SELECT id, nom_produit, prix, image_url
         FROM produits
-        WHERE statut = 'valide' AND nom_produit LIKE %s
+        WHERE statut = 'valide' AND LOWER(nom_produit) LIKE LOWER(%s)
         LIMIT 10
     """, (f"%{q}%",))
     produits = cur.fetchall()
@@ -766,13 +751,27 @@ def rechercher_produits():
     if not conn:
         return jsonify({"status": "error", "message": "Erreur connexion"}), 500
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) as total FROM produits WHERE statut = 'valide' AND nom_produit LIKE %s", (f"%{mot_cle}%",))
-    total = cur.fetchone()['total']
+    # Recherche dans le nom et la description avec tri par pertinence
+    search_term = f"%{mot_cle}%"
     cur.execute("""
-        SELECT id, nom_produit, prix, promotion, categorie, image_url, id_vendeur, vues
-        FROM produits WHERE statut = 'valide' AND nom_produit LIKE %s
+        SELECT COUNT(*) as total
+        FROM produits
+        WHERE statut = 'valide'
+        AND (nom_produit LIKE %s OR description_produit LIKE %s)
+    """, (search_term, search_term))
+    total = cur.fetchone()['total']
+
+    cur.execute("""
+        SELECT id, nom_produit, prix, promotion, categorie, image_url, id_vendeur, vues,
+               (CASE WHEN nom_produit LIKE %s THEN 3
+                     WHEN nom_produit LIKE %s THEN 2
+                     ELSE 1 END) as pertinence
+        FROM produits
+        WHERE statut = 'valide'
+        AND (nom_produit LIKE %s OR description_produit LIKE %s)
+        ORDER BY pertinence DESC, date_creation DESC
         LIMIT %s OFFSET %s
-    """, (f"%{mot_cle}%", limit, offset))
+    """, (f"%{mot_cle}%", f"%{mot_cle}%", search_term, search_term, limit, offset))
     produits = cur.fetchall()
     cur.close()
     conn.close()
@@ -804,28 +803,75 @@ def boutique_vendeur(id_vendeur):
     conn.close()
     return jsonify({"boutique": vendeur, "produits": produits})
 
-@app.route('/produits/top-vues', methods=['GET'])
-def top_produits_vues():
+# ==========================================
+# BOUTIQUE FILTRÉE (NOUVEAU)
+# ==========================================
+@app.route('/boutique/filtrer', methods=['GET'])
+def boutique_filtrer():
+    id_vendeur = request.args.get('id_vendeur', type=int)
+    if not id_vendeur:
+        return jsonify({"status": "error", "message": "ID vendeur requis"}), 400
+
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 30, type=int)
+    offset = (page - 1) * limit
+
+    categorie = request.args.get('categorie')
+    genre = request.args.get('genre')
+    prix_min = request.args.get('prix_min', type=int)
+    prix_max = request.args.get('prix_max', type=int)
+
     conn = obtenir_connexion()
     if not conn:
         return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+
     cur = conn.cursor()
-    cur.execute("""
-        SELECT p.id, p.nom_produit, p.prix, p.promotion, p.image_url,
-               p.vues, p.categorie, v.nom_boutique, p.id_vendeur
+    base_query = """
         FROM produits p
-        LEFT JOIN vendeurs v ON p.id_vendeur = v.id
-        WHERE p.statut = 'valide'
-        AND p.vues > 0
-        ORDER BY p.vues DESC
-        LIMIT 3
-    """)
+        WHERE p.id_vendeur = %s AND p.statut = 'valide'
+    """
+    params = [id_vendeur]
+    conditions = []
+
+    if categorie and categorie != 'all':
+        conditions.append("p.categorie = %s")
+        params.append(categorie)
+    if genre and genre != 'all':
+        conditions.append("(p.genre = %s OR p.genre = 'unisexe')")
+        params.append(genre)
+    if prix_min is not None:
+        conditions.append("p.prix >= %s")
+        params.append(prix_min)
+    if prix_max is not None:
+        conditions.append("p.prix <= %s")
+        params.append(prix_max)
+
+    if conditions:
+        base_query += " AND " + " AND ".join(conditions)
+
+    count_query = f"SELECT COUNT(*) as total {base_query}"
+    cur.execute(count_query, params)
+    total = cur.fetchone()['total']
+
+    select_query = f"""
+        SELECT id, nom_produit, prix, promotion, categorie, image_url, vues, clic_whatsapp
+        {base_query}
+        ORDER BY date_creation DESC
+        LIMIT %s OFFSET %s
+    """
+    params.extend([limit, offset])
+    cur.execute(select_query, params)
     produits = cur.fetchall()
     cur.close()
     conn.close()
-    return jsonify({"status": "success", "data": produits})
 
-# ==========================================
+    return jsonify({
+        "status": "success",
+        "data": produits,
+        "pagination": {"page": page, "limit": limit, "total": total, "pages": (total + limit - 1) // limit if total > 0 else 1}
+    })
+
+
 # CRUD PRODUITS (vendeur)
 # ==========================================
 @app.route('/produits', methods=['POST'])

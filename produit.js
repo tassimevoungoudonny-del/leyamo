@@ -1,78 +1,6 @@
-// ============================================
-// PRODUIT.JS – Solution définitive retour arrière
-// ============================================
-
 const API = "";
 const id = window.location.pathname.split('/').pop();
-
-// ============================================
-// 1. Gestion du retour arrière (fiable)
-// ============================================
-(function() {
-    // Détecter si l'utilisateur vient de l'extérieur
-    const referer = document.referrer || '';
-    const isExternal = !referer || !referer.includes(window.location.origin);
-
-    if (isExternal) {
-        // Marquer dans sessionStorage qu'on est sur la page produit
-        sessionStorage.setItem('fromExternal', 'true');
-
-        // Créer un historique à deux entrées
-        history.replaceState({ page: 'home' }, '', '/');
-        history.pushState({ page: 'product' }, '', window.location.pathname);
-    }
-
-    // Intercepter popstate
-    window.addEventListener('popstate', function(event) {
-        if (sessionStorage.getItem('fromExternal') === 'true') {
-            sessionStorage.removeItem('fromExternal');
-            window.location.replace('/');
-        }
-    });
-
-    // Détecter le retour via bfcache
-    window.addEventListener('pageshow', function(event) {
-        if (event.persisted && sessionStorage.getItem('fromExternal') === 'true') {
-            sessionStorage.removeItem('fromExternal');
-            window.location.replace('/');
-        }
-    });
-
-    // SECOURS : si l'utilisateur revient sur la page après un retour,
-    // le flag est encore présent, on le supprime pour éviter une boucle.
-    // Mais on redirige déjà via popstate/pageshow.
-
-    // Si malgré tout le retour échoue, on ajoute un bouton visible
-    // (optionnel, mais fortement recommandé)
-    const fiche = document.querySelector('.fiche-produit');
-    if (fiche) {
-        const retourBtn = document.createElement('a');
-        retourBtn.href = '/';
-        retourBtn.innerHTML = '← Retour à l\'accueil';
-        retourBtn.style.cssText = `
-            display: inline-block;
-            margin-bottom: 15px;
-            color: #0f766e;
-            text-decoration: underline;
-            font-weight: 600;
-            cursor: pointer;
-        `;
-        retourBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/';
-        });
-        fiche.prepend(retourBtn);
-    }
-
-    // Nettoyer le flag si la page est fermée normalement
-    window.addEventListener('beforeunload', function() {
-        sessionStorage.removeItem('fromExternal');
-    });
-})();
-
-// ============================================
-// 2. Chargement des avis
-// ============================================
+let envoiAvisEnCours = false;
 
 document.addEventListener("DOMContentLoaded", function() {
     chargerAvis(id);
@@ -81,9 +9,7 @@ document.addEventListener("DOMContentLoaded", function() {
 async function chargerAvis(produitId) {
     try {
         const reponse = await fetch(`${API}/produits/${produitId}/avis`);
-        if (!reponse.ok) {
-            throw new Error(`HTTP ${reponse.status}`);
-        }
+        if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
         const data = await reponse.json();
 
         let section = document.getElementById("avis-section");
@@ -95,7 +21,7 @@ async function chargerAvis(produitId) {
             if (fiche) fiche.appendChild(section);
         }
 
-        const moyenne = (typeof data.moyenne === 'number') ? data.moyenne : 0;
+        const moyenne = typeof data.moyenne === 'number' ? data.moyenne : 0;
         const total = data.total || 0;
         const etoiles = "⭐".repeat(Math.round(moyenne)) + "☆".repeat(5 - Math.round(moyenne));
 
@@ -142,9 +68,13 @@ async function chargerAvis(produitId) {
 }
 
 async function ajouterAvis(produitId) {
+    if (envoiAvisEnCours) return;
+    envoiAvisEnCours = true;
+
     const client_nom = document.getElementById("avis-nom").value.trim() || "Anonyme";
     const note = parseInt(document.getElementById("avis-note").value);
     const commentaire = document.getElementById("avis-commentaire").value.trim();
+
     try {
         const reponse = await fetch(`${API}/produits/${produitId}/avis`, {
             method: "POST",
@@ -154,14 +84,19 @@ async function ajouterAvis(produitId) {
         const data = await reponse.json();
         if (reponse.status === 201) {
             afficherNotification("✅ Avis ajouté", "success");
+            document.getElementById("avis-commentaire").value = "";
             chargerAvis(produitId);
         } else {
             afficherNotification("❌ " + data.message, "error");
         }
     } catch (e) {
         afficherNotification("❌ Erreur réseau", "error");
+    } finally {
+        envoiAvisEnCours = false;
     }
 }
+
+// Lightbox et autres fonctions inchangées...
 
 // ============================================
 // 3. Lightbox sur l'image principale

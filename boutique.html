@@ -20,41 +20,194 @@
 </header>
 <div style="padding:30px;max-width:1200px;margin:0 auto;">
     <div id="info-boutique" style="background:white;padding:24px;border-radius:16px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-        <h2 id="nom-boutique">Boutique</h2><p id="localisation-boutique">📍 Localisation</p><p>📱 WhatsApp: <span id="num-whatsapp"></span></p>
+        <h2 id="nom-boutique">Boutique</h2>
+        <p id="localisation-boutique">📍 Localisation</p>
+        <p>📱 WhatsApp: <span id="num-whatsapp"></span></p>
     </div>
-    <h2>Produits</h2><div id="produits-boutique" class="grille-produits"></div>
+
+    <!-- FILTRES -->
+    <div class="filtre-container">
+        <div class="groupe-filtres">
+            <span>Catégorie :</span>
+            <button class="filtre-btn active" data-categorie="all">Tous</button>
+            <button class="filtre-btn" data-categorie="Vêtements">👕 Vêtements</button>
+            <button class="filtre-btn" data-categorie="Chaussures">👟 Chaussures</button>
+            <button class="filtre-btn" data-categorie="Maillot">🏊 Maillot</button>
+            <button class="filtre-btn" data-categorie="Électronique">📱 Électronique</button>
+            <button class="filtre-btn" data-categorie="Accessoires">💍 Accessoires</button>
+            <button class="filtre-btn" data-categorie="Maison">🏠 Maison</button>
+            <button class="filtre-btn" data-categorie="Autre">📦 Autre</button>
+        </div>
+        <div class="groupe-filtres">
+            <span>Genre :</span>
+            <button class="filtre-genre active" data-genre="all">Tous</button>
+            <button class="filtre-genre" data-genre="masculin">👨 Masculin</button>
+            <button class="filtre-genre" data-genre="feminin">👩 Féminin</button>
+        </div>
+        <div class="filtre-prix">
+            <span>💰 Prix :</span>
+            <input type="range" id="prix-min" min="0" max="100000" value="0" step="1000">
+            <span class="prix-values">
+                <span id="prix-min-label">0</span> - <span id="prix-max-label">100 000</span> FCFA
+            </span>
+            <input type="range" id="prix-max" min="0" max="100000" value="100000" step="1000">
+        </div>
+    </div>
+
+    <h2>Produits</h2>
+    <div id="compteur-produits-boutique" style="text-align:center;font-size:14px;color:#64748b;margin-bottom:10px;"></div>
+    <div id="produits-boutique" class="grille-produits"></div>
+    <div id="pagination-boutique"></div>
 </div>
 <script>
-const API = "";
-const id = new URLSearchParams(window.location.search).get("id");
-async function chargerBoutique() {
-    if (!id) { document.getElementById("info-boutique").innerHTML = "<p>Vendeur introuvable</p>"; return; }
-    try {
-        const reponse = await fetch(`${API}/boutique/${id}`);
-        const data = await reponse.json();
-        document.getElementById("nom-boutique").innerHTML = data.boutique.nom_boutique || data.boutique.nom;
-        document.getElementById("localisation-boutique").innerHTML = `📍 ${data.boutique.localisation_boutique || 'Non renseigné'}`;
-        document.getElementById("num-whatsapp").innerHTML = data.boutique.num_whatsapp || 'Non renseigné';
+    const API = "";
+    const id = new URLSearchParams(window.location.search).get("id");
+    let categorieBoutique = "all";
+    let genreBoutique = "all";
+    let prixMinBoutique = 0;
+    let prixMaxBoutique = 100000;
+
+    async function chargerBoutique(page = 1) {
+        if (!id) { document.getElementById("info-boutique").innerHTML = "<p>Vendeur introuvable</p>"; return; }
+        try {
+            const infoReponse = await fetch(`${API}/boutique/${id}`);
+            const infoData = await infoReponse.json();
+            document.getElementById("nom-boutique").innerHTML = infoData.boutique.nom_boutique || infoData.boutique.nom;
+            document.getElementById("localisation-boutique").innerHTML = `📍 ${infoData.boutique.localisation_boutique || 'Non renseigné'}`;
+            document.getElementById("num-whatsapp").innerHTML = infoData.boutique.num_whatsapp || 'Non renseigné';
+
+            const params = new URLSearchParams();
+            params.set('id_vendeur', id);
+            params.set('page', page);
+            params.set('limit', 30);
+            if (categorieBoutique && categorieBoutique !== 'all') params.set('categorie', categorieBoutique);
+            if (genreBoutique && genreBoutique !== 'all') params.set('genre', genreBoutique);
+            if (prixMinBoutique > 0) params.set('prix_min', prixMinBoutique);
+            if (prixMaxBoutique < 100000) params.set('prix_max', prixMaxBoutique);
+
+            const url = `${API}/boutique/filtrer?${params}`;
+            const reponse = await fetch(url);
+            const data = await reponse.json();
+            afficherProduitsBoutique(data.data);
+            afficherPaginationBoutique(data.pagination);
+            const compteur = document.getElementById("compteur-produits-boutique");
+            if (compteur) {
+                const total = data.pagination?.total || 0;
+                compteur.textContent = total === 0 ? "Aucun produit" :
+                                       total === 1 ? "1 produit" :
+                                       `${total} produits`;
+            }
+        } catch (erreur) {
+            console.error(erreur);
+            afficherNotification("Erreur de chargement", "error");
+        }
+    }
+
+    function afficherProduitsBoutique(produits) {
         const zone = document.getElementById("produits-boutique");
         zone.innerHTML = "";
-        if (data.produits.length === 0) { zone.innerHTML = "<p style='text-align:center;color:#64748b;'>Aucun produit disponible</p>"; return; }
-        data.produits.forEach(p => {
+        if (!produits || produits.length === 0) {
+            zone.innerHTML = "<p style='text-align:center;color:#64748b;padding:40px;'>Aucun produit disponible dans cette boutique.</p>";
+            return;
+        }
+        produits.forEach(p => {
+            const image = p.image_url || "https://via.placeholder.com/400x300";
+            const prixFormate = new Intl.NumberFormat('fr-FR').format(p.prix);
+            let prixHtml = `<span class="prix">${prixFormate} FCFA</span>`;
+            if (p.promotion && p.promotion > 0) {
+                const prixPromo = new Intl.NumberFormat('fr-FR').format(p.prix * (1 - p.promotion / 100));
+                prixHtml = `
+                    <span class="prix-barre">${prixFormate} FCFA</span>
+                    <span class="prix">${prixPromo} FCFA</span>
+                    <span class="badge-promo">-${p.promotion}%</span>
+                `;
+            }
             zone.innerHTML += `
-                <div class="carte">
-                    <img src="${p.image_url || 'https://via.placeholder.com/400x300'}" class="image-produit">
+                <div class="carte" onclick="window.location.href='/produit/${p.id}'">
+                    <img src="${image}" class="image-produit" loading="lazy">
                     <div class="info-produit">
-                        <h3>${p.nom_produit}</h3><p class="prix">${p.prix} FCFA</p>
+                        <h3>${p.nom_produit}</h3>
+                        <div>${prixHtml}</div>
                         <span class="categorie">${p.categorie}</span>
-                        <div class="boutons"><a href="/produit/${p.id}" class="btn voir">Voir</a><a href="/produit/${p.id}" class="btn commander">Commander</a></div>
+                        <div class="boutons">
+                            <a href="/produit/${p.id}" class="btn voir">Voir</a>
+                            <a href="/produit/${p.id}" class="btn commander">Commander</a>
+                        </div>
                     </div>
                 </div>
             `;
         });
-    } catch (erreur) {
-        afficherNotification("Erreur de chargement", "error");
     }
-}
-chargerBoutique();
+
+    function afficherPaginationBoutique(pagination) {
+        const container = document.getElementById("pagination-boutique");
+        if (!container) return;
+        container.innerHTML = "";
+        if (!pagination || pagination.pages <= 1) return;
+        const { page, pages, total } = pagination;
+
+        if (page > 1) {
+            const btn = document.createElement("button");
+            btn.textContent = "◀";
+            btn.addEventListener("click", () => chargerBoutique(page - 1));
+            container.appendChild(btn);
+        }
+        for (let i = Math.max(1, page - 2); i <= Math.min(pages, page + 2); i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            if (i === page) btn.classList.add("active");
+            btn.addEventListener("click", () => chargerBoutique(i));
+            container.appendChild(btn);
+        }
+        if (page < pages) {
+            const btn = document.createElement("button");
+            btn.textContent = "▶";
+            btn.addEventListener("click", () => chargerBoutique(page + 1));
+            container.appendChild(btn);
+        }
+        const info = document.createElement("span");
+        info.textContent = ` ${total} produits`;
+        container.appendChild(info);
+    }
+
+    // Gestion des événements de filtrage
+    document.addEventListener("click", function(e) {
+        const catBtn = e.target.closest(".filtre-btn");
+        if (catBtn) {
+            document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
+            catBtn.classList.add("active");
+            categorieBoutique = catBtn.dataset.categorie;
+            chargerBoutique(1);
+        }
+        const genreBtn = e.target.closest(".filtre-genre");
+        if (genreBtn) {
+            document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
+            genreBtn.classList.add("active");
+            genreBoutique = genreBtn.dataset.genre;
+            chargerBoutique(1);
+        }
+    });
+
+    const prixMinInput = document.getElementById("prix-min");
+    const prixMaxInput = document.getElementById("prix-max");
+    const prixMinLabel = document.getElementById("prix-min-label");
+    const prixMaxLabel = document.getElementById("prix-max-label");
+    if (prixMinInput) {
+        prixMinInput.addEventListener("input", function() {
+            prixMinBoutique = parseInt(this.value);
+            if (prixMinLabel) prixMinLabel.textContent = new Intl.NumberFormat('fr-FR').format(prixMinBoutique);
+            chargerBoutique(1);
+        });
+    }
+    if (prixMaxInput) {
+        prixMaxInput.addEventListener("input", function() {
+            prixMaxBoutique = parseInt(this.value);
+            if (prixMaxLabel) prixMaxLabel.textContent = new Intl.NumberFormat('fr-FR').format(prixMaxBoutique);
+            chargerBoutique(1);
+        });
+    }
+
+    chargerBoutique(1);
 </script>
 <script src="notifications.js"></script>
 <script src="back-to-top.js"></script>

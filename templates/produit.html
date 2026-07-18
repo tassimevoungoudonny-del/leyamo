@@ -52,9 +52,8 @@
         <a id="lien-boutique" href="/boutique?id={{ produit.id_vendeur }}" target="_blank" style="font-size:14px; color:#0f766e; text-decoration:underline; margin-left:10px;">Voir la boutique</a>
     </h3>
 
+    <!-- Boutons de partage : WhatsApp et Facebook supprimés, seul "Copier le lien" reste -->
     <div class="share-buttons">
-        <button class="share-whatsapp" onclick="partagerWhatsApp()">📱 WhatsApp</button>
-        <button class="share-facebook" onclick="partagerFacebook()">📘 Facebook</button>
         <button class="share-copy" onclick="copierLien()">📋 Copier le lien</button>
     </div>
 
@@ -84,19 +83,6 @@
         );
         window.open(`https://wa.me/237${num}?text=${message}`, "_blank");
     }
-
-function partagerWhatsApp() {
-    const url = encodeURIComponent("{{ url_og }}");  // ← utilise l’URL avec version
-    const nom = document.getElementById('nom').textContent;
-    const prix = document.getElementById('prix').textContent;
-    const texte = encodeURIComponent(`🔥 Découvrez ${nom} sur Leyamo !\n💰 ${prix}\n🔗 ${url}`);
-    window.open(`https://wa.me/?text=${texte}`, "_blank");
-}
-
-function partagerFacebook() {
-    const url = encodeURIComponent("{{ url_og }}");
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank");
-}
 
     function copierLien() {
         navigator.clipboard.writeText(window.location.href)

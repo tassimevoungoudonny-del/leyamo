@@ -125,7 +125,6 @@ async function rechercherProduit(page = 1) {
 // ============================================
 // AUTOCOMPLÉTION AVEC DEBOUNCE
 // ============================================
-
 async function autocomplete(q) {
     if (q.length < 2) {
         document.getElementById("autocomplete-list")?.classList.remove("active");
@@ -164,27 +163,6 @@ function afficherAutocomplete(resultats) {
         list.appendChild(div);
     });
 }
-
-// Dans DOMContentLoaded, ajouter :
-rechercheInput.addEventListener("input", function() {
-    const value = this.value.trim();
-    const clearBtn = document.getElementById("clear-search");
-    if (clearBtn) clearBtn.style.display = value.length > 0 ? "flex" : "none";
-    clearTimeout(autocompleteTimeout);
-    if (value.length >= 2) {
-        autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
-    } else {
-        document.getElementById("autocomplete-list")?.classList.remove("active");
-    }
-});
-rechercheInput.addEventListener("keyup", function(e) {
-    if (e.key === "Enter") rechercherProduit(1);
-});
-document.addEventListener("click", function(e) {
-    if (!e.target.closest(".search-box")) {
-        document.getElementById("autocomplete-list")?.classList.remove("active");
-    }
-});
 
 function reinitialiserRecherche() {
     const rechercheInput = document.getElementById("recherche");
@@ -365,98 +343,6 @@ async function signalerProduit(id, nom) {
     }
 }
 
-// ============================================
-// INITIALISATION
-// ============================================
-document.addEventListener("DOMContentLoaded", function() {
-    console.log("🚀 DOM chargé, initialisation...");
-    const darkBtn = document.querySelector(".btn-darkmode");
-    if (darkBtn && localStorage.getItem("darkMode") === "true") {
-        document.body.classList.add("dark-mode");
-        darkBtn.textContent = "☀️";
-    }
-    const rechercheInput = document.getElementById("recherche");
-    if (rechercheInput) {
-        rechercheInput.addEventListener("input", function() {
-            const value = this.value.trim();
-            const clearBtn = document.getElementById("clear-search");
-            if (clearBtn) clearBtn.style.display = value.length > 0 ? "flex" : "none";
-            clearTimeout(autocompleteTimeout);
-            if (value.length >= 2) {
-                autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
-            } else {
-                document.getElementById("autocomplete-list")?.classList.remove("active");
-            }
-        });
-        rechercheInput.addEventListener("keyup", function(e) {
-            if (e.key === "Enter") rechercherProduit(1);
-        });
-    }
-    const clearBtn = document.getElementById("clear-search");
-    if (clearBtn) {
-        clearBtn.addEventListener("click", reinitialiserRecherche);
-    }
-    document.addEventListener("click", function(e) {
-        const catBtn = e.target.closest(".filtre-btn");
-        if (catBtn) {
-            document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
-            catBtn.classList.add("active");
-            categorieActuelle = catBtn.dataset.categorie;
-            chargerProduits(1);
-        }
-        const genreBtn = e.target.closest(".filtre-genre");
-        if (genreBtn) {
-            document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
-            genreBtn.classList.add("active");
-            genreActuel = genreBtn.dataset.genre;
-            chargerProduits(1);
-        }
-    });
-    const prixMinInput = document.getElementById("prix-min");
-    const prixMaxInput = document.getElementById("prix-max");
-    const prixMinLabel = document.getElementById("prix-min-label");
-    const prixMaxLabel = document.getElementById("prix-max-label");
-    if (prixMinInput) {
-        prixMinInput.addEventListener("input", function() {
-            prixMin = parseInt(this.value);
-            if (prixMinLabel) prixMinLabel.textContent = formaterPrix(prixMin);
-            chargerProduits(1);
-        });
-    }
-    if (prixMaxInput) {
-        prixMaxInput.addEventListener("input", function() {
-            prixMax = parseInt(this.value);
-            if (prixMaxLabel) prixMaxLabel.textContent = formaterPrix(prixMax);
-            chargerProduits(1);
-        });
-    }
-    const limitSelect = document.getElementById("limit-select");
-    if (limitSelect) {
-        limitSelect.addEventListener("change", function() {
-            limit = parseInt(this.value);
-            chargerProduits(1);
-        });
-    }
-    const viewGrid = document.getElementById("view-grid");
-    const viewList = document.getElementById("view-list");
-    if (viewGrid) {
-        viewGrid.addEventListener("click", function() {
-            viewGrid.classList.add("active");
-            viewList?.classList.remove("active");
-            document.getElementById("liste-produits")?.classList.remove("liste");
-        });
-    }
-    if (viewList) {
-        viewList.addEventListener("click", function() {
-            viewList.classList.add("active");
-            viewGrid?.classList.remove("active");
-            document.getElementById("liste-produits")?.classList.add("liste");
-        });
-    }
-    chargerProduits(1);
-    console.log("✅ Initialisation terminée.");
-});
-
 function ouvrirLightbox(src) {
     const existing = document.getElementById('lightbox-overlay');
     if (existing) existing.remove();
@@ -501,6 +387,125 @@ function ouvrirLightbox(src) {
     });
 }
 
+// ============================================
+// INITIALISATION AU CHARGEMENT DU DOM
+// ============================================
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("🚀 DOM chargé, initialisation...");
+
+    // Mode sombre
+    const darkBtn = document.querySelector(".btn-darkmode");
+    if (darkBtn && localStorage.getItem("darkMode") === "true") {
+        document.body.classList.add("dark-mode");
+        darkBtn.textContent = "☀️";
+    }
+
+    // Recherche et autocomplétion
+    const rechercheInput = document.getElementById("recherche");
+    if (rechercheInput) {
+        rechercheInput.addEventListener("input", function() {
+            const value = this.value.trim();
+            const clearBtn = document.getElementById("clear-search");
+            if (clearBtn) clearBtn.style.display = value.length > 0 ? "flex" : "none";
+            clearTimeout(autocompleteTimeout);
+            if (value.length >= 2) {
+                autocompleteTimeout = setTimeout(() => autocomplete(value), 300);
+            } else {
+                document.getElementById("autocomplete-list")?.classList.remove("active");
+            }
+        });
+        rechercheInput.addEventListener("keyup", function(e) {
+            if (e.key === "Enter") rechercherProduit(1);
+        });
+    }
+
+    // Bouton "Effacer"
+    const clearBtn = document.getElementById("clear-search");
+    if (clearBtn) {
+        clearBtn.addEventListener("click", reinitialiserRecherche);
+    }
+
+    // Clic en dehors de la recherche
+    document.addEventListener("click", function(e) {
+        if (!e.target.closest(".search-box")) {
+            document.getElementById("autocomplete-list")?.classList.remove("active");
+        }
+    });
+
+    // Filtres catégorie
+    document.addEventListener("click", function(e) {
+        const catBtn = e.target.closest(".filtre-btn");
+        if (catBtn) {
+            document.querySelectorAll(".filtre-btn").forEach(b => b.classList.remove("active"));
+            catBtn.classList.add("active");
+            categorieActuelle = catBtn.dataset.categorie;
+            chargerProduits(1);
+        }
+    });
+
+    // Filtres genre
+    document.addEventListener("click", function(e) {
+        const genreBtn = e.target.closest(".filtre-genre");
+        if (genreBtn) {
+            document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
+            genreBtn.classList.add("active");
+            genreActuel = genreBtn.dataset.genre;
+            chargerProduits(1);
+        }
+    });
+
+    // Filtres prix
+    const prixMinInput = document.getElementById("prix-min");
+    const prixMaxInput = document.getElementById("prix-max");
+    const prixMinLabel = document.getElementById("prix-min-label");
+    const prixMaxLabel = document.getElementById("prix-max-label");
+    if (prixMinInput) {
+        prixMinInput.addEventListener("input", function() {
+            prixMin = parseInt(this.value);
+            if (prixMinLabel) prixMinLabel.textContent = formaterPrix(prixMin);
+            chargerProduits(1);
+        });
+    }
+    if (prixMaxInput) {
+        prixMaxInput.addEventListener("input", function() {
+            prixMax = parseInt(this.value);
+            if (prixMaxLabel) prixMaxLabel.textContent = formaterPrix(prixMax);
+            chargerProduits(1);
+        });
+    }
+
+    // Limite de résultats
+    const limitSelect = document.getElementById("limit-select");
+    if (limitSelect) {
+        limitSelect.addEventListener("change", function() {
+            limit = parseInt(this.value);
+            chargerProduits(1);
+        });
+    }
+
+    // Vue grille / liste
+    const viewGrid = document.getElementById("view-grid");
+    const viewList = document.getElementById("view-list");
+    if (viewGrid) {
+        viewGrid.addEventListener("click", function() {
+            viewGrid.classList.add("active");
+            viewList?.classList.remove("active");
+            document.getElementById("liste-produits")?.classList.remove("liste");
+        });
+    }
+    if (viewList) {
+        viewList.addEventListener("click", function() {
+            viewList.classList.add("active");
+            viewGrid?.classList.remove("active");
+            document.getElementById("liste-produits")?.classList.add("liste");
+        });
+    }
+
+    // Chargement initial
+    chargerProduits(1);
+    console.log("✅ Initialisation terminée.");
+});
+
 // Expositions globales
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;
@@ -509,3 +514,4 @@ window.afficherLoader = afficherLoader;
 window.toggleDarkMode = toggleDarkMode;
 window.quickView = quickView;
 window.fermerQuickView = fermerQuickView;
+window.ouvrirLightbox = ouvrirLightbox;

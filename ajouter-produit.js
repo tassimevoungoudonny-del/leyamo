@@ -1,18 +1,6 @@
 const API = "";
 let imagesSelectionnees = [];
 
-function afficherLoader(actif) {
-    let overlay = document.getElementById("loader-overlay");
-    if (!overlay) {
-        overlay = document.createElement("div");
-        overlay.id = "loader-overlay";
-        overlay.className = "loader-overlay";
-        overlay.innerHTML = `<div class="spinner"></div>`;
-        document.body.appendChild(overlay);
-    }
-    overlay.className = `loader-overlay${actif ? ' active' : ''}`;
-}
-
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("images_produit").addEventListener("change", function() {
         const preview = document.getElementById("preview-images");
@@ -61,7 +49,10 @@ async function ajouterProduit() {
         return;
     }
 
-    afficherLoader(true);
+    const btn = document.getElementById("btn-ajouter");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Ajout...`;
 
     try {
         const reponseProduit = await fetch(`${API}/produits`, {
@@ -85,7 +76,8 @@ async function ajouterProduit() {
         const dataProduit = await reponseProduit.json();
         if (reponseProduit.status !== 201) {
             afficherNotification("❌ " + dataProduit.message, "error");
-            afficherLoader(false);
+            btn.disabled = false;
+            btn.textContent = originalText;
             return;
         }
 
@@ -114,6 +106,7 @@ async function ajouterProduit() {
             afficherNotification("✅ Produit ajouté !", "success");
         }
 
+        // Réinitialiser le formulaire
         document.getElementById("nom_produit").value = "";
         document.getElementById("description_produit").value = "";
         document.getElementById("prix").value = "";
@@ -123,9 +116,15 @@ async function ajouterProduit() {
         document.getElementById("preview-images").innerHTML = "";
         imagesSelectionnees = [];
 
+        // Rediriger vers le dashboard après 2 secondes
+        setTimeout(() => {
+            window.location.href = "/dashboard";
+        }, 2000);
+
     } catch (erreur) {
         afficherNotification("Erreur réseau", "error");
     } finally {
-        afficherLoader(false);
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }

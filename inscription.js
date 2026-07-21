@@ -22,6 +22,12 @@ async function inscription() {
         return;
     }
 
+    // Désactiver le bouton et afficher un spinner
+    const btn = document.querySelector('button[onclick="inscription()"]');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Inscription...`;
+
     try {
         const reponse = await fetch(`${API}/vendeurs/inscription`, {
             method: "POST",
@@ -34,13 +40,17 @@ async function inscription() {
         const data = await reponse.json();
         if (reponse.status === 201) {
             afficherNotification("✅ " + data.message, "success");
+            // Redirection automatique vers la page de connexion
             setTimeout(() => {
                 window.location.href = "/connexion";
-            }, 3000);
+            }, 2500);
         } else {
             afficherNotification("❌ " + data.message, "error");
         }
     } catch (erreur) {
         afficherNotification("Erreur réseau", "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }

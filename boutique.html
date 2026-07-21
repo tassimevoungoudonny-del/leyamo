@@ -5,6 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boutique - Leyamo</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Ajustements spécifiques pour la page boutique */
+        .page-boutique {
+            padding: 16px 10px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #info-boutique {
+            background: white;
+            padding: 16px 18px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        #info-boutique h2 {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        #info-boutique p {
+            font-size: 14px;
+            margin: 4px 0;
+        }
+        .filtre-container {
+            margin-bottom: 16px;
+        }
+        .filtre-prix input[type="range"] {
+            width: 80px;
+        }
+        @media (max-width: 768px) {
+            .page-boutique {
+                padding: 10px 6px;
+            }
+            #info-boutique {
+                padding: 14px 12px;
+            }
+            #info-boutique h2 {
+                font-size: 18px;
+            }
+            .filtre-prix input[type="range"] {
+                width: 60px;
+            }
+            .filtre-prix .prix-values {
+                font-size: 11px;
+            }
+        }
+        @media (max-width: 480px) {
+            .page-boutique {
+                padding: 6px 4px;
+            }
+            #info-boutique {
+                padding: 10px 10px;
+            }
+        }
+    </style>
 </head>
 <body>
 <header>
@@ -18,14 +72,16 @@
         <a href="/inscription">Inscription</a>
     </nav>
 </header>
-<div style="padding:30px;max-width:1200px;margin:0 auto;">
-    <div id="info-boutique" style="background:white;padding:24px;border-radius:16px;margin-bottom:30px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+
+<div class="page-boutique">
+    <!-- Informations boutique -->
+    <div id="info-boutique">
         <h2 id="nom-boutique">Boutique</h2>
         <p id="localisation-boutique">📍 Localisation</p>
         <p>📱 WhatsApp: <span id="num-whatsapp"></span></p>
     </div>
 
-    <!-- FILTRES -->
+    <!-- FILTRES (identique à l'accueil) -->
     <div class="filtre-container">
         <div class="groupe-filtres">
             <span>Catégorie :</span>
@@ -54,11 +110,12 @@
         </div>
     </div>
 
-    <h2>Produits</h2>
+    <h2 style="font-size:20px; margin-top:10px;">Produits</h2>
     <div id="compteur-produits-boutique" style="text-align:center;font-size:14px;color:#64748b;margin-bottom:10px;"></div>
     <div id="produits-boutique" class="grille-produits"></div>
     <div id="pagination-boutique"></div>
 </div>
+
 <script>
     const API = "";
     const id = new URLSearchParams(window.location.search).get("id");

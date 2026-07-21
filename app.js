@@ -8,6 +8,12 @@ let autocompleteTimeout;
 
 const DEFAULT_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='400' height='300' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial, sans-serif' font-size='28' fill='%2394a3b8' text-anchor='middle' dy='.3em'%3ELeyamo%3C/text%3E%3C/svg%3E";
 
+function optimiserImageCloudinary(url, largeur = 300, hauteur = 300) {
+    if (!url) return DEFAULT_IMAGE;
+    if (!url.includes('cloudinary')) return url;
+    return url.replace('/upload/', `/upload/w_${largeur},h_${hauteur},c_fill/`);
+}
+
 function afficherLoader(actif) {
     let overlay = document.getElementById("loader-overlay");
     if (!overlay) {
@@ -89,9 +95,6 @@ async function appliquerFiltres(page = 1) {
     chargerProduits(page);
 }
 
-// ============================================
-// RECHERCHE AVEC PAGINATION CORRECTE
-// ============================================
 async function rechercherProduit(page = 1) {
     const rechercheInput = document.getElementById("recherche");
     const motCle = rechercheInput ? rechercheInput.value.trim() : "";
@@ -122,9 +125,6 @@ async function rechercherProduit(page = 1) {
     }
 }
 
-// ============================================
-// AUTOCOMPLÉTION AVEC DEBOUNCE
-// ============================================
 async function autocomplete(q) {
     if (q.length < 2) {
         document.getElementById("autocomplete-list")?.classList.remove("active");
@@ -151,7 +151,7 @@ function afficherAutocomplete(resultats) {
     resultats.forEach(item => {
         const div = document.createElement("div");
         div.className = "autocomplete-item";
-        const image = item.image_url || DEFAULT_IMAGE;
+        const image = item.image_url ? optimiserImageCloudinary(item.image_url, 60, 60) : DEFAULT_IMAGE;
         div.innerHTML = `
             <img src="${image}" alt="${item.nom_produit}">
             <div class="info">
@@ -232,7 +232,7 @@ function afficherProduits(produits) {
         return;
     }
     produits.forEach(produit => {
-        const image = produit.image_url || DEFAULT_IMAGE;
+        const image = produit.image_url ? optimiserImageCloudinary(produit.image_url, 300, 300) : DEFAULT_IMAGE;
         const prixFormate = formaterPrix(produit.prix);
         const promotion = produit.promotion || 0;
         let prixAffichage = `<span class="prix">${prixFormate} FCFA</span>`;
@@ -294,7 +294,8 @@ async function quickView(id) {
             `;
             document.body.appendChild(overlay);
         }
-        document.getElementById("qv-image").src = (p.images && p.images.length > 0) ? p.images[0] : DEFAULT_IMAGE;
+        const imgSrc = (p.images && p.images.length > 0) ? optimiserImageCloudinary(p.images[0], 600, 600) : DEFAULT_IMAGE;
+        document.getElementById("qv-image").src = imgSrc;
         document.getElementById("qv-titre").textContent = p.nom_produit;
         const prixFormate = formaterPrix(p.prix);
         if (p.promotion && p.promotion > 0) {
@@ -387,20 +388,16 @@ function ouvrirLightbox(src) {
     });
 }
 
-// ============================================
-// INITIALISATION AU CHARGEMENT DU DOM
-// ============================================
+// INITIALISATION
 document.addEventListener("DOMContentLoaded", function() {
     console.log("🚀 DOM chargé, initialisation...");
 
-    // Mode sombre
     const darkBtn = document.querySelector(".btn-darkmode");
     if (darkBtn && localStorage.getItem("darkMode") === "true") {
         document.body.classList.add("dark-mode");
         darkBtn.textContent = "☀️";
     }
 
-    // Recherche et autocomplétion
     const rechercheInput = document.getElementById("recherche");
     if (rechercheInput) {
         rechercheInput.addEventListener("input", function() {
@@ -419,20 +416,17 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Bouton "Effacer"
     const clearBtn = document.getElementById("clear-search");
     if (clearBtn) {
         clearBtn.addEventListener("click", reinitialiserRecherche);
     }
 
-    // Clic en dehors de la recherche
     document.addEventListener("click", function(e) {
         if (!e.target.closest(".search-box")) {
             document.getElementById("autocomplete-list")?.classList.remove("active");
         }
     });
 
-    // Filtres catégorie
     document.addEventListener("click", function(e) {
         const catBtn = e.target.closest(".filtre-btn");
         if (catBtn) {
@@ -441,10 +435,6 @@ document.addEventListener("DOMContentLoaded", function() {
             categorieActuelle = catBtn.dataset.categorie;
             chargerProduits(1);
         }
-    });
-
-    // Filtres genre
-    document.addEventListener("click", function(e) {
         const genreBtn = e.target.closest(".filtre-genre");
         if (genreBtn) {
             document.querySelectorAll(".filtre-genre").forEach(b => b.classList.remove("active"));
@@ -454,7 +444,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // Filtres prix
     const prixMinInput = document.getElementById("prix-min");
     const prixMaxInput = document.getElementById("prix-max");
     const prixMinLabel = document.getElementById("prix-min-label");
@@ -474,7 +463,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Limite de résultats
     const limitSelect = document.getElementById("limit-select");
     if (limitSelect) {
         limitSelect.addEventListener("change", function() {
@@ -483,7 +471,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Vue grille / liste
     const viewGrid = document.getElementById("view-grid");
     const viewList = document.getElementById("view-list");
     if (viewGrid) {
@@ -501,12 +488,10 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // Chargement initial
     chargerProduits(1);
     console.log("✅ Initialisation terminée.");
 });
 
-// Expositions globales
 window.rechercherProduit = rechercherProduit;
 window.reinitialiserRecherche = reinitialiserRecherche;
 window.signalerProduit = signalerProduit;

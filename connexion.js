@@ -9,6 +9,11 @@ async function connexion() {
         return;
     }
 
+    const btn = document.querySelector('button[onclick="connexion()"]');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Connexion...`;
+
     try {
         const reponse = await fetch(`${API}/vendeurs/connexion`, {
             method: "POST",
@@ -52,6 +57,9 @@ async function connexion() {
     } catch (erreur) {
         afficherNotification("❌ Erreur réseau", "error");
         console.error(erreur);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 

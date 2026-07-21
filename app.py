@@ -745,13 +745,18 @@ def rechercher_produits():
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 30, type=int)
     offset = (page - 1) * limit
+
     if not mot_cle:
         return jsonify({"status": "error", "message": "Mot-clé manquant"}), 400
+
     conn = obtenir_connexion()
     if not conn:
         return jsonify({"status": "error", "message": "Erreur connexion"}), 500
+
     cur = conn.cursor()
     search_term = f"%{mot_cle}%"
+
+    # Comptage total
     cur.execute("""
         SELECT COUNT(*) as total
         FROM produits
@@ -760,29 +765,34 @@ def rechercher_produits():
     """, (search_term, search_term))
     total = cur.fetchone()['total']
 
+    # Requête principale avec pertinence calculée
     cur.execute("""
-        (SELECT id, nom_produit, prix, promotion, categorie, image_url, id_vendeur, vues, 3 as pertinence
-         FROM produits
-         WHERE statut = 'valide' AND nom_produit = %s)
-        UNION
-        (SELECT id, nom_produit, prix, promotion, categorie, image_url, id_vendeur, vues, 2 as pertinence
-         FROM produits
-         WHERE statut = 'valide' AND nom_produit LIKE %s AND nom_produit != %s)
-        UNION
-        (SELECT id, nom_produit, prix, promotion, categorie, image_url, id_vendeur, vues, 1 as pertinence
-         FROM produits
-         WHERE statut = 'valide' AND (nom_produit LIKE %s OR description_produit LIKE %s)
-         AND nom_produit NOT LIKE %s AND nom_produit != %s)
+        SELECT id, nom_produit, prix, promotion, categorie, image_url, id_vendeur, vues,
+               (CASE
+                    WHEN nom_produit = %s THEN 3
+                    WHEN nom_produit LIKE %s THEN 2
+                    ELSE 1
+                END) AS pertinence
+        FROM produits
+        WHERE statut = 'valide'
+        AND (nom_produit LIKE %s OR description_produit LIKE %s)
         ORDER BY pertinence DESC, date_creation DESC
         LIMIT %s OFFSET %s
-    """, (mot_cle, f"{mot_cle}%", mot_cle, search_term, search_term, f"{mot_cle}%", mot_cle, limit, offset))
+    """, (mot_cle, f"{mot_cle}%", search_term, search_term, limit, offset))
+
     produits = cur.fetchall()
     cur.close()
     conn.close()
+
     return jsonify({
         "status": "success",
         "resultats": produits,
-        "pagination": {"page": page, "limit": limit, "total": total, "pages": (total + limit - 1) // limit if total > 0 else 1}
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit if total > 0 else 1
+        }
     })
 @app.route('/boutique/<int:id_vendeur>', methods=['GET'])
 def boutique_vendeur(id_vendeur):
